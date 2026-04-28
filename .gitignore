@@ -7,3 +7,5 @@ dist/
 build/
 *.spec
 dist-ext/
+AppDir/
+*.AppImage
