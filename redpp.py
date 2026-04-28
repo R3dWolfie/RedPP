@@ -503,8 +503,56 @@ class TosuClient:
         v = mods.get("str") or mods.get("name") or ""
         return "".join(re.findall(r"[A-Za-z]{2}", v)).upper()
 
-def run_repl(*a, **kw) -> int:  # stubbed in Task 8
-    raise NotImplementedError("repl not yet wired")
+def run_repl(map_path: str, *, accs: tuple[float, ...],
+             verbose: bool, as_json: bool) -> int:
+    try:
+        import readline  # noqa: F401  - enables ↑/↓ and line editing
+        readline.set_history_length(500)
+    except ImportError:
+        pass
+    last_score: ParsedScore | None = None
+    last_path = map_path
+    print(DIM(f"redpp REPL — map: {Path(last_path).name}  (Ctrl-D to exit)"))
+    while True:
+        try:
+            line = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+        if not line:
+            if last_score is None:
+                # render preset row for current map+nomod
+                try:
+                    header, rows = calc_presets(last_path, ParsedScore(), accs)
+                    print(render_presets(header, rows, pinned=False,
+                                          verbose=verbose, as_json=as_json))
+                except (ValueError, FileNotFoundError, RuntimeError) as e:
+                    print(f"error: {e}", file=sys.stderr)
+            else:
+                # re-render with last score
+                try:
+                    if last_score.is_bare_mods():
+                        header, rows = calc_presets(last_path, last_score, accs)
+                        print(render_presets(header, rows, pinned=False,
+                                              verbose=verbose, as_json=as_json))
+                    else:
+                        rd = calc_one(last_path, last_score)
+                        print(render_oneshot(rd, verbose=verbose, as_json=as_json))
+                except (ValueError, FileNotFoundError, RuntimeError) as e:
+                    print(f"error: {e}", file=sys.stderr)
+            continue
+        try:
+            score = parse_score_string(line)
+            if score.is_bare_mods():
+                header, rows = calc_presets(last_path, score, accs)
+                print(render_presets(header, rows, pinned=False,
+                                      verbose=verbose, as_json=as_json))
+            else:
+                rd = calc_one(last_path, score)
+                print(render_oneshot(rd, verbose=verbose, as_json=as_json))
+            last_score = score
+        except (ValueError, FileNotFoundError, RuntimeError) as e:
+            print(f"error: {e}", file=sys.stderr)
 
 def run_watch(*a, **kw) -> int:  # stubbed in Task 9
     raise NotImplementedError("watch not yet wired")
