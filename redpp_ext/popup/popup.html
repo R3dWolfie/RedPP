@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RedPP</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="panel">
+
+    <div id="hero" class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-dim"></div>
+      <div class="hero-row">
+        <span id="stars" class="stars">0.00</span>
+        <span id="chevron" class="chevron" hidden>⏶⏶</span>
+      </div>
+      <div class="title-block">
+        <div id="artist" class="artist"></div>
+        <div id="title" class="title"></div>
+        <div id="diff" class="diff"></div>
+      </div>
+    </div>
+
+    <div class="chips">
+      <div class="chip-row">
+        <button class="chip" data-mod="HD">HD</button>
+        <button class="chip" data-mod="HR">HR</button>
+        <button class="chip" data-mod="DT">DT</button>
+        <button class="chip" data-mod="FL">FL</button>
+      </div>
+      <div class="chip-row">
+        <button class="chip" data-mod="EZ">EZ</button>
+        <button class="chip" data-mod="HT">HT</button>
+        <button class="chip" data-mod="NC">NC</button>
+        <button class="chip" data-mod="BL">BL</button>
+      </div>
+    </div>
+
+    <div id="stats" class="stats">—</div>
+
+    <div class="pp-row">
+      <span id="badge" class="badge"></span>
+      <span id="pp-text" class="pp-text">0pp for 0.0%</span>
+    </div>
+
+    <label class="acc-label">Accuracy: <span id="acc-val">100.0</span>%</label>
+    <input id="acc-slider" type="range" min="0" max="1000" step="1" value="1000" class="slider">
+
+    <div id="status" class="status"></div>
+    <div class="footer">RedPP v0.1.0</div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

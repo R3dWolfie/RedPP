@@ -6,6 +6,7 @@ the following third-party software, each retaining its own license:
 | Component       | License           | Project                                              |
 |-----------------|-------------------|------------------------------------------------------|
 | rosu-pp-py      | MIT               | https://github.com/MaxOhn/rosu-pp-py                 |
+| rosu-pp-js      | MIT (vendored under `redpp_ext/vendor/`) | https://github.com/MaxOhn/rosu-pp-js |
 | rosu-pp         | MIT               | https://github.com/MaxOhn/rosu-pp                    |
 | PySide6 (Qt 6)  | LGPL v3           | https://www.qt.io/qt-for-python                      |
 | PyInstaller     | GPL v2 (with exception for bundled apps) | https://pyinstaller.org   |

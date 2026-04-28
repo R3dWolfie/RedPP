@@ -1,9 +1,10 @@
 # RedPP
 
-EZPP-style osu!(lazer) pp calculator. Two surfaces:
+EZPP-style osu!(lazer) pp calculator. Three surfaces:
 
 - **CLI** (`redpp.py`) — one-shot, REPL, and tosu-watch modes
 - **Desktop app** (`redpp_app/`) — frameless always-on-top panel, mod overrides, live in-play pp
+- **Browser extension** (`redpp_ext/`) — Chrome / Firefox popup that runs on osu.ppy.sh beatmap pages, computes pp client-side via WASM (`rosu-pp-js`)
 
 ## Download (prebuilt binaries)
 
@@ -83,8 +84,30 @@ visibility, accuracy range, and reset position. State persists to
 Both surfaces require [tosu](https://github.com/tosuapp/tosu) running on
 `127.0.0.1:24050` for live-map auto-detection.
 
+## Browser extension
+
+Manifest v3 web extension (works in both Chrome and Firefox). Open any
+osu.ppy.sh beatmap page (`/b/<id>`, `/beatmaps/<id>`, or
+`/beatmapsets/<setid>#osu/<id>`), click the toolbar icon — same panel
+design as the app, but driven by the URL instead of tosu.
+
+**Install (developer mode):**
+
+- **Chrome:** Settings → Extensions → Developer mode → "Load unpacked" → pick the `redpp_ext/` directory.
+- **Firefox:** `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → pick `redpp_ext/manifest.json`.
+
+**Build distributable zips:**
+```bash
+./redpp_ext/build_ext.sh   # produces dist-ext/RedPP-{chrome,firefox}-X.Y.Z.zip
+```
+
+The extension does *not* talk to tosu — it fetches the `.osu` file
+directly from `osu.ppy.sh/osu/<id>` and calculates pp in-browser. No
+backend, no API key, no remote calls outside `osu.ppy.sh` and
+`assets.ppy.sh`.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Bundled third-party components (rosu-pp-py,
-PySide6, PyInstaller) retain their own licenses, listed in
+rosu-pp-js, PySide6, PyInstaller) retain their own licenses, listed in
 [NOTICE.md](NOTICE.md).

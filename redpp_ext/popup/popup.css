@@ -1,0 +1,134 @@
+/* RedPP popup — mirrors the desktop app's panel theme. */
+
+:root {
+  --bg:        #1A2333;
+  --bg-deep:   #0E1622;
+  --text:      #E6E8EC;
+  --muted:     #B0B6C2;
+  --grey:      #A2A8B4;
+  --gold:      #FFD370;
+  --gold-dim:  rgba(255, 211, 112, 0.35);
+  --cyan:      #5BD7E0;
+  --lime:      #88C540;
+  --blue:      #5DADE2;
+  --purple:    #B47BC9;
+  --red:       #E74C3C;
+  --footer:    #5A6275;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  width: 320px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 11pt;
+}
+
+.panel { display: flex; flex-direction: column; }
+
+/* Hero -------------------------------------------------------------- */
+.hero {
+  position: relative;
+  height: 150px;
+  background: linear-gradient(180deg, #1F2A3D 0%, var(--bg-deep) 100%);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  overflow: hidden;
+  padding: 8px 12px 12px;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: blur(14px);
+  transform: scale(1.15);  /* hide blur edge bleed */
+}
+.hero-dim {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.hero-row, .title-block { position: relative; z-index: 1; }
+.hero-row {
+  display: flex; justify-content: flex-end; align-items: center;
+  gap: 4px; height: 24px;
+}
+.stars   { font-size: 17pt; font-weight: 700; color: #FFFFFF; }
+.chevron { color: var(--gold); font-size: 12pt; line-height: 1; }
+.title-block {
+  position: absolute;
+  left: 12px; right: 12px; bottom: 10px;
+  z-index: 1;
+}
+.artist  { color: #DCE0E8; font-size: 10pt; }
+.title   { color: #FFFFFF; font-size: 16pt; font-weight: 700;
+           overflow-wrap: anywhere; line-height: 1.15; }
+.diff    { color: var(--text); font-size: 11pt; font-weight: 500; margin-top: 2px; }
+
+/* Chips ------------------------------------------------------------- */
+.chips    { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; }
+.chip-row { display: flex; justify-content: center; gap: 6px; }
+.chip {
+  width: 48px; height: 48px;
+  background: transparent;
+  color: var(--gold-dim);
+  border: 2px solid var(--gold-dim);
+  border-radius: 0;
+  /* hexagonal clip-path (pointy-top) */
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  font-weight: 700; font-size: 10pt;
+  cursor: pointer;
+  transition: background 80ms, color 80ms;
+}
+.chip:hover { color: var(--gold); border-color: var(--gold); }
+.chip.active {
+  background: var(--gold); color: var(--bg-deep); border-color: var(--gold);
+}
+.chip:focus { outline: none; }
+
+/* Stats / pp / slider ---------------------------------------------- */
+.stats { color: var(--grey); font-size: 9pt; padding: 0 14px; }
+
+.pp-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 12px;
+}
+.badge {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 900; color: var(--bg-deep);
+  font-family: "Arial Black", Arial, sans-serif;
+}
+.pp-text { font-size: 19pt; font-weight: 700; color: #FFFFFF; }
+
+.acc-label { font-size: 10pt; color: var(--muted); padding: 0 14px; }
+
+.slider {
+  -webkit-appearance: none; appearance: none;
+  margin: 4px 12px 8px; height: 6px; border-radius: 3px;
+  background: linear-gradient(to right, var(--gold) 0% var(--fill, 100%), #2C374B var(--fill, 100%) 100%);
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #FFFFFF; border: 2px solid var(--gold);
+  cursor: pointer;
+}
+.slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #FFFFFF; border: 2px solid var(--gold);
+  cursor: pointer;
+}
+
+/* Status / footer -------------------------------------------------- */
+.status {
+  font-size: 9pt; color: var(--grey);
+  padding: 2px 14px; min-height: 14px;
+}
+.status.error { color: var(--red); }
+.footer {
+  color: var(--footer); font-size: 8pt;
+  padding: 4px 14px 8px;
+}
