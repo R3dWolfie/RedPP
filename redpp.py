@@ -164,6 +164,150 @@ def parse_score_string(s: str) -> ParsedScore:
     return out
 
 
+@dataclass
+class RenderData:
+    filename: str
+    stars: float
+    ar: float
+    od: float
+    cs: float
+    hp: float
+    bpm: float
+    clock_rate: float
+    mods_str: str
+    combo: int | None
+    max_combo: int
+    n300: int
+    n100: int
+    n50: int
+    misses: int
+    accuracy: float
+    pp: float
+    pp_aim: float
+    pp_speed: float
+    pp_acc: float
+    pp_difficulty: float
+    pp_flashlight: float
+
+
+_BMAP_CACHE: dict[tuple[str, float], "rosu.Beatmap"] = {}
+
+
+def load_bmap(path: str) -> "rosu.Beatmap":
+    p = Path(path)
+    if not p.is_file():
+        raise FileNotFoundError(f"map not found: {path}")
+    key = (str(p.resolve()), p.stat().st_mtime)
+    cached = _BMAP_CACHE.get(key)
+    if cached is not None:
+        return cached
+    bmap = rosu.Beatmap(path=str(p))
+    if bmap.is_suspicious():
+        raise RuntimeError("(suspicious — skipping)")
+    # opportunistic eviction: keep cache small
+    if len(_BMAP_CACHE) > 32:
+        _BMAP_CACHE.clear()
+    _BMAP_CACHE[key] = bmap
+    return bmap
+
+
+def _build_perf_kwargs(score: ParsedScore) -> dict:
+    kw: dict = {"lazer": score.lazer}
+    if score.mods:
+        kw["mods"] = score.mods
+    if score.clock_rate is not None:
+        kw["clock_rate"] = score.clock_rate
+    if score.ar is not None:
+        kw["ar"] = score.ar; kw["fixed_ar"] = score.fixed_ar
+    if score.od is not None:
+        kw["od"] = score.od; kw["fixed_od"] = score.fixed_od
+    if score.cs is not None:
+        kw["cs"] = score.cs; kw["fixed_cs"] = score.fixed_cs
+    if score.hp is not None:
+        kw["hp"] = score.hp; kw["fixed_hp"] = score.fixed_hp
+    return kw
+
+
+def _build_attrs(bmap: "rosu.Beatmap", score: ParsedScore):
+    bab_kw: dict = {"map": bmap}
+    if score.mods:
+        bab_kw["mods"] = score.mods
+    if score.clock_rate is not None:
+        bab_kw["clock_rate"] = score.clock_rate
+    if score.ar is not None: bab_kw["ar"] = score.ar
+    if score.od is not None: bab_kw["od"] = score.od
+    if score.cs is not None: bab_kw["cs"] = score.cs
+    if score.hp is not None: bab_kw["hp"] = score.hp
+    return rosu.BeatmapAttributesBuilder(**bab_kw).build()
+
+
+def _render_data(path: str, bmap, attrs, score: ParsedScore,
+                  perf_attrs, accuracy: float) -> RenderData:
+    diff = perf_attrs.difficulty
+    return RenderData(
+        filename=Path(path).name,
+        stars=diff.stars,
+        ar=attrs.ar, od=attrs.od, cs=attrs.cs, hp=attrs.hp,
+        bpm=bmap.bpm * attrs.clock_rate,
+        clock_rate=attrs.clock_rate,
+        mods_str=score.mods,
+        combo=score.combo,
+        max_combo=diff.max_combo,
+        n300=score.n300 or 0,
+        n100=score.n100 or 0,
+        n50=score.n50 or 0,
+        misses=score.misses or 0,
+        accuracy=accuracy,
+        pp=perf_attrs.pp,
+        pp_aim=perf_attrs.pp_aim or 0.0,
+        pp_speed=perf_attrs.pp_speed or 0.0,
+        pp_acc=perf_attrs.pp_accuracy or 0.0,
+        pp_difficulty=perf_attrs.pp_difficulty or 0.0,
+        pp_flashlight=perf_attrs.pp_flashlight or 0.0,
+    )
+
+
+def calc_one(path: str, score: ParsedScore) -> RenderData:
+    bmap = load_bmap(path)
+    attrs = _build_attrs(bmap, score)
+    kw = _build_perf_kwargs(score)
+    if score.accuracy is not None:
+        kw["accuracy"] = score.accuracy
+    if score.n300 is not None: kw["n300"] = score.n300
+    if score.n100 is not None: kw["n100"] = score.n100
+    if score.n50  is not None: kw["n50"]  = score.n50
+    if score.misses is not None: kw["misses"] = score.misses
+    if score.combo is not None: kw["combo"] = score.combo
+    perf = rosu.Performance(**kw).calculate(bmap)
+
+    # derive accuracy if not specified (calculated from hit counts by rosu-pp's state)
+    acc = score.accuracy
+    if acc is None:
+        st = perf.state
+        total = (st.n300 + st.n100 + st.n50 + st.misses) or 1
+        acc = (300*st.n300 + 100*st.n100 + 50*st.n50) / (300 * total) * 100.0
+    return _render_data(path, bmap, attrs, score, perf, acc)
+
+
+def calc_presets(path: str, score: ParsedScore,
+                  accs: tuple[float, ...]) -> tuple[RenderData, list[RenderData]]:
+    bmap = load_bmap(path)
+    attrs = _build_attrs(bmap, score)
+    base_kw = _build_perf_kwargs(score)
+    rows: list[RenderData] = []
+    header_rd: RenderData | None = None
+    for a in accs:
+        kw = dict(base_kw)
+        kw["accuracy"] = a
+        perf = rosu.Performance(**kw).calculate(bmap)
+        rd = _render_data(path, bmap, attrs, score, perf, a)
+        if header_rd is None:
+            header_rd = rd
+        rows.append(rd)
+    assert header_rd is not None
+    return header_rd, rows
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="redpp", description="EZPP-style osu!(lazer) pp calculator")
     ap.add_argument("map", nargs="?", help=".osu file path (omit to fetch from tosu)")

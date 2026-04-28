@@ -110,3 +110,45 @@ def test_synthetic_map_loads():
     bmap = rosu.Beatmap(path=p)
     assert bmap.bpm == pytest.approx(180.0, abs=0.5)
     assert not bmap.is_suspicious()
+
+
+def test_load_bmap_caches():
+    from redpp import load_bmap, _BMAP_CACHE
+    p = make_osu()
+    _BMAP_CACHE.clear()
+    a = load_bmap(p)
+    b = load_bmap(p)
+    assert a is b  # same instance from cache
+
+def test_calc_one_basic():
+    from redpp import calc_one
+    p = make_osu()
+    score = parse_score_string("99%")
+    rd = calc_one(p, score)
+    assert rd.pp > 0
+    assert rd.stars > 0
+    assert rd.bpm > 0
+    assert rd.mods_str == ""
+
+def test_calc_one_hr_changes_ar():
+    from redpp import calc_one
+    p = make_osu(ar=9.0)
+    rd_nm = calc_one(p, parse_score_string("100%"))
+    rd_hr = calc_one(p, parse_score_string("HR 100%"))
+    assert rd_hr.ar > rd_nm.ar  # HR should bump AR
+    assert rd_hr.pp > rd_nm.pp  # HR usually awards more pp here
+
+def test_calc_one_clock_rate_overrides_dt():
+    from redpp import calc_one
+    p = make_osu()
+    rd = calc_one(p, parse_score_string("1.5x 100%"))
+    assert rd.clock_rate == pytest.approx(1.5)
+
+def test_calc_presets_returns_row():
+    from redpp import calc_presets
+    p = make_osu()
+    score = parse_score_string("HDHR")
+    header, rows = calc_presets(p, score, (95.0, 99.0, 100.0))
+    assert len(rows) == 3
+    assert all(r.pp > 0 for r in rows)
+    assert rows[2].pp >= rows[0].pp  # 100% >= 95%
