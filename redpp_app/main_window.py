@@ -148,8 +148,15 @@ class RedPPMainWindow(QWidget):
         if not self._show_live_row_enabled or label is None or self._state.live_play is None:
             self._live.set_content(label=None, pp=0, acc=0, combo=0, misses=0)
             return
-        pp = compute_live_pp(self._state)
         lp = self._state.live_play
+        # Hide the row until the first judgment lands; before any hit,
+        # combo/misses/hits are all zero and rosu-pp returns a misleading
+        # value (no accuracy ground truth, no real progress to weight).
+        total_judgments = lp.n300 + lp.n100 + lp.n50 + lp.misses
+        if total_judgments == 0:
+            self._live.set_content(label=None, pp=0, acc=0, combo=0, misses=0)
+            return
+        pp = compute_live_pp(self._state)
         self._live.set_content(label=label, pp=pp, acc=lp.accuracy,
                                 combo=lp.combo, misses=lp.misses)
 
@@ -200,8 +207,19 @@ class RedPPMainWindow(QWidget):
         self._acc_range = (lo, hi)
         self._slider.set_range(lo, hi)
 
+    # Bumped whenever a setting's default changes — drops stale values
+    # from older state.json on first launch with the new code.
+    _SETTINGS_VERSION = 2
+
     def _restore_persisted(self) -> None:
         d = _load_persisted()
+        version = int(d.get("settings_version", 1))
+        if version < 2:
+            # v1 -> v2: slider default range changed from (90, 100) to
+            # (0, 100). Drop the old persisted range so the new default
+            # applies; user's deliberate menu choices on this version will
+            # still persist normally.
+            d.pop("acc_range", None)
         if "x" in d and "y" in d:
             self.move(int(d["x"]), int(d["y"]))
         if "always_on_top" in d:
@@ -220,6 +238,7 @@ class RedPPMainWindow(QWidget):
             "always_on_top": bool(self.windowFlags() & Qt.WindowStaysOnTopHint),
             "show_live_row": self._show_live_row_enabled,
             "acc_range": [self._acc_range[0], self._acc_range[1]],
+            "settings_version": self._SETTINGS_VERSION,
         })
         _save_persisted(d)
         try:

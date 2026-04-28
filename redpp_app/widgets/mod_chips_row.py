@@ -1,15 +1,23 @@
-"""Row of 4 mod chips: HD, HR, DT, FL.
+"""Two rows of mod chips covering the pp-relevant osu!std mods.
+
+Row 1 (difficulty up):    HD HR DT FL
+Row 2 (difficulty mods):  EZ HT NC BL
 
 Owns the AppState reference; clicks update state.override_mods through
-state.toggle_mod() and re-render visual state."""
+state.toggle_mod() and re-render visual state.
+"""
 from __future__ import annotations
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QFrame, QHBoxLayout
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout
 
 from .mod_chip import ModChip
 from ..state import AppState
 
-CHIP_ORDER = ("HD", "HR", "DT", "FL")
+CHIP_ROWS: tuple[tuple[str, ...], ...] = (
+    ("HD", "HR", "DT", "FL"),
+    ("EZ", "HT", "NC", "BL"),
+)
+CHIP_ORDER: tuple[str, ...] = tuple(m for row in CHIP_ROWS for m in row)
 
 
 class ModChipsRow(QFrame):
@@ -19,16 +27,21 @@ class ModChipsRow(QFrame):
         super().__init__(parent)
         self._state = state
         self._chips: list[ModChip] = []
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
-        layout.addStretch(1)
-        for acr in CHIP_ORDER:
-            c = ModChip(acr, self)
-            c.toggled_chip.connect(self._on_chip_toggle)
-            self._chips.append(c)
-            layout.addWidget(c)
-        layout.addStretch(1)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(8, 4, 8, 4)
+        outer.setSpacing(4)
+        for row in CHIP_ROWS:
+            row_layout = QHBoxLayout()
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(6)
+            row_layout.addStretch(1)
+            for acr in row:
+                c = ModChip(acr, self)
+                c.toggled_chip.connect(self._on_chip_toggle)
+                self._chips.append(c)
+                row_layout.addWidget(c)
+            row_layout.addStretch(1)
+            outer.addLayout(row_layout)
         self._sync_from_state()
 
     def chips(self) -> list[ModChip]:

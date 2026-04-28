@@ -12,11 +12,25 @@ def qapp():
 
 
 def test_chips_reflect_initial_live_mods(qapp):
-    from redpp_app.widgets.mod_chips_row import ModChipsRow
+    from redpp_app.widgets.mod_chips_row import ModChipsRow, CHIP_ORDER
     state = AppState(live_mods="HDHR")
     row = ModChipsRow(state)
     actives = {c.acronym: c.active for c in row.chips()}
-    assert actives == {"HD": True, "HR": True, "DT": False, "FL": False}
+    # 8 chips total across 2 rows; only the live ones light up.
+    assert set(actives.keys()) == set(CHIP_ORDER)
+    assert actives["HD"] is True and actives["HR"] is True
+    assert all(actives[m] is False for m in ("DT", "FL", "EZ", "HT", "NC", "BL"))
+
+
+def test_chip_layout_has_two_rows(qapp):
+    from redpp_app.widgets.mod_chips_row import ModChipsRow, CHIP_ROWS
+    assert len(CHIP_ROWS) == 2
+    assert all(len(r) == 4 for r in CHIP_ROWS)
+    assert "EZ" in CHIP_ROWS[1] and "HT" in CHIP_ROWS[1]
+    state = AppState()
+    row = ModChipsRow(state)
+    # 8 chips total
+    assert len(row.chips()) == 8
 
 
 def test_clicking_chip_enters_override_and_changes_active(qapp):
