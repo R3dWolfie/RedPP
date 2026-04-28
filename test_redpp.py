@@ -1,5 +1,6 @@
 import json
 import re
+import tempfile
 import pytest
 from redpp import parse_score_string, ParsedScore
 
@@ -69,3 +70,43 @@ def test_no_acc_no_hits_returns_empty():
     r = _p("HDHR")
     assert r.mods == "HDHR" and r.accuracy is None
     assert r.n50 is None and r.combo is None
+
+
+def make_osu(n_circles: int = 100, ar: float = 9.0, od: float = 8.0,
+             cs: float = 4.0, hp: float = 5.0, bpm: float = 180.0) -> str:
+    """Write a synthetic .osu file with proper [TimingPoints]. Returns path."""
+    beat_ms = 60000.0 / bpm
+    body = [
+        "osu file format v14",
+        "[General]",
+        "Mode: 0",
+        "[Metadata]",
+        "Title:Test",
+        "Artist:RedPP",
+        "Creator:RedPP",
+        "Version:Synthetic",
+        "[Difficulty]",
+        f"HPDrainRate:{hp}",
+        f"CircleSize:{cs}",
+        f"OverallDifficulty:{od}",
+        f"ApproachRate:{ar}",
+        "SliderMultiplier:1.4",
+        "SliderTickRate:1",
+        "[TimingPoints]",
+        f"0,{beat_ms},4,2,1,80,1,0",
+        "[HitObjects]",
+    ]
+    for i in range(n_circles):
+        body.append(f"256,192,{1000 + i * 200},1,0,0:0:0:0:")
+    f = tempfile.NamedTemporaryFile("w", suffix=".osu", delete=False)
+    f.write("\n".join(body))
+    f.close()
+    return f.name
+
+
+def test_synthetic_map_loads():
+    import rosu_pp_py as rosu
+    p = make_osu()
+    bmap = rosu.Beatmap(path=p)
+    assert bmap.bpm == pytest.approx(180.0, abs=0.5)
+    assert not bmap.is_suspicious()
