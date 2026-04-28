@@ -6,14 +6,18 @@ QWidget {
     font-size: 11pt;
 }
 
-/* Hero strip */
+/* Hero strip — labels paint with transparent bg so the blurred image
+   shows through. The strip itself uses paintEvent (not QSS) so it can
+   draw the pixmap. */
 #HeroStrip {
-    background: #0E1622;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
 }
-#HeroStrip QLabel#Artist  { color: #B0B6C2; font-size: 10pt; }
-#HeroStrip QLabel#Title   { color: #FFFFFF; font-size: 18pt; font-weight: 700; }
+#HeroStrip QLabel {
+    background: transparent;
+}
+#HeroStrip QLabel#Artist  { color: #DCE0E8; font-size: 10pt; }
+#HeroStrip QLabel#Title   { color: #FFFFFF; font-size: 16pt; font-weight: 700; }
 #HeroStrip QLabel#Diff    { color: #E6E8EC; font-size: 11pt; font-weight: 500; }
 #HeroStrip QLabel#Stars   { color: #FFFFFF; font-size: 17pt; font-weight: 700; }
 
@@ -31,12 +35,12 @@ ModChip { background: transparent; border: none; }
 
 /* Stats line */
 QLabel#StatsLine {
-    color: #A2A8B4; font-size: 10pt;
+    color: #A2A8B4; font-size: 9pt;
 }
 
 /* PP result */
 QLabel#PPNumber {
-    color: #FFFFFF; font-size: 22pt; font-weight: 700;
+    color: #FFFFFF; font-size: 19pt; font-weight: 700;
 }
 
 /* Acc slider */

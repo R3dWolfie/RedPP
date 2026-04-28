@@ -14,9 +14,9 @@ def test_stats_line_format(qapp):
     s = StatsLine()
     s.set_stats(ar=10.0, od=10.0, cs=5.59, hp=6.30, bpm=200)
     txt = s.text()
-    assert "AR: 10.00" in txt and "OD: 10.00" in txt
-    assert "CS: 5.59" in txt and "HP: 6.30" in txt
-    assert "BPM: 200" in txt
+    assert "AR 10.0" in txt and "OD 10.0" in txt
+    assert "CS 5.6" in txt and "HP 6.3" in txt
+    assert "BPM 200" in txt
 
 
 def test_pp_result_format(qapp):
@@ -25,6 +25,32 @@ def test_pp_result_format(qapp):
     p.set_pp(905.4321, 99.5)
     assert "905pp" in p._label.text()
     assert "99.5%" in p._label.text()
+
+
+def test_compute_rank_thresholds():
+    from redpp_app.widgets.pp_result import compute_rank
+    assert compute_rank(100.0) == "SS"
+    assert compute_rank(99.99) == "S"
+    assert compute_rank(95.0)  == "S"
+    assert compute_rank(94.99) == "A"
+    assert compute_rank(90.0)  == "A"
+    assert compute_rank(89.99) == "B"
+    assert compute_rank(80.0)  == "B"
+    assert compute_rank(79.99) == "C"
+    assert compute_rank(70.0)  == "C"
+    assert compute_rank(69.99) == "D"
+    assert compute_rank(0.0)   == "D"
+
+
+def test_pp_result_badge_updates_with_rank(qapp):
+    """Setting different accuracies should swap the badge pixmap."""
+    from redpp_app.widgets.pp_result import PPResult
+    p = PPResult()
+    p.set_pp(0.0, 0.0)         # D
+    pm_d = p._badge.pixmap().toImage()
+    p.set_pp(500.0, 100.0)     # SS
+    pm_ss = p._badge.pixmap().toImage()
+    assert pm_d != pm_ss
 
 
 def test_acc_slider_emits_value(qapp):

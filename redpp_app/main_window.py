@@ -51,7 +51,7 @@ def _save_persisted(d: dict) -> None:
 class RedPPMainWindow(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setFixedSize(280, 420)
+        self.setFixedSize(340, 460)
         self.setWindowFlag(Qt.FramelessWindowHint, True)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setAttribute(Qt.WA_TranslucentBackground, False)

@@ -1,11 +1,13 @@
-"""HeroStrip — top 140px region with bg image, title block, stars, ×/⋮."""
+"""HeroStrip — top region with bg image, title block, stars, ×/⋮."""
 from __future__ import annotations
 from pathlib import Path
 from typing import Optional
-from PySide6.QtCore import Qt, Signal, QPoint, QRectF
+from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import (QPainter, QPixmap, QImage, QLinearGradient, QColor,
                             QBrush, QIcon)
-from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QWidget
+from PySide6.QtWidgets import (QFrame, QLabel, QPushButton, QVBoxLayout,
+                                  QHBoxLayout, QGraphicsScene,
+                                  QGraphicsPixmapItem, QGraphicsBlurEffect)
 
 _ASSETS = Path(__file__).resolve().parent.parent / "assets"
 
@@ -21,7 +23,7 @@ class HeroStrip(QFrame):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("HeroStrip")
-        self.setFixedHeight(140)
+        self.setFixedHeight(160)
         self._bg_pixmap: Optional[QPixmap] = None
         self._setup_ui()
 
@@ -47,22 +49,35 @@ class HeroStrip(QFrame):
             if pm.isNull():
                 self._bg_pixmap = None
             else:
-                # Crop-cover into the strip's aspect ratio, then blur via QImage.
-                self._bg_pixmap = self._blur(pm.scaled(
-                    self.width() * 2, 280, Qt.KeepAspectRatioByExpanding,
-                    Qt.SmoothTransformation))
+                # Scale to ~2× the strip size keeping the cover aspect, then
+                # apply a real Gaussian blur via Qt's graphics effect. Much
+                # nicer than the cheap downscale-trick we used before.
+                target_w = max(self.width() * 2, 720)
+                target_h = max(self.height() * 2, 320)
+                scaled = pm.scaled(target_w, target_h,
+                                    Qt.KeepAspectRatioByExpanding,
+                                    Qt.SmoothTransformation)
+                self._bg_pixmap = self._gaussian_blur(scaled, radius=22)
         self.update()
 
     @staticmethod
-    def _blur(pm: QPixmap, radius: int = 12) -> QPixmap:
-        # Cheap stack-blur by repeated downscale/upscale; keeps stdlib-only.
-        img = pm.toImage()
-        small = img.scaled(img.width() // (radius // 2 + 1),
-                            img.height() // (radius // 2 + 1),
-                            Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-        return QPixmap.fromImage(small.scaled(img.width(), img.height(),
-                                                Qt.IgnoreAspectRatio,
-                                                Qt.SmoothTransformation))
+    def _gaussian_blur(pm: QPixmap, radius: int = 20) -> QPixmap:
+        """Real Gaussian blur via QGraphicsBlurEffect rendered to a pixmap."""
+        scene = QGraphicsScene()
+        item = QGraphicsPixmapItem(pm)
+        effect = QGraphicsBlurEffect()
+        effect.setBlurRadius(radius)
+        effect.setBlurHints(QGraphicsBlurEffect.QualityHint)
+        item.setGraphicsEffect(effect)
+        scene.addItem(item)
+        out = QPixmap(pm.size())
+        out.fill(Qt.transparent)
+        painter = QPainter(out)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        scene.render(painter, QRectF(out.rect()), QRectF(pm.rect()))
+        painter.end()
+        return out
 
     # ---- painting -----------------------------------------------------
     def paintEvent(self, _ev) -> None:
@@ -143,9 +158,12 @@ class HeroStrip(QFrame):
         pin_row.addStretch(1)
         outer.addLayout(pin_row)
 
-        # bottom: artist / title / diff
+        # bottom: artist / title / diff. Title can wrap to 2 lines for
+        # long names; QSS strips opaque backgrounds so the bg image
+        # shows through.
         self._artist_label = QLabel("", self); self._artist_label.setObjectName("Artist")
         self._title_label = QLabel("", self); self._title_label.setObjectName("Title")
+        self._title_label.setWordWrap(True)
         self._diff_label = QLabel("", self); self._diff_label.setObjectName("Diff")
         outer.addWidget(self._artist_label)
         outer.addWidget(self._title_label)

@@ -1,4 +1,4 @@
-"""One-line `AR: x.xx OD: x.xx CS: x.xx HP: x.xx BPM: nnn`."""
+"""One-line `AR x.x · OD x.x · CS x.x · HP x.x · BPM nnn`."""
 from PySide6.QtWidgets import QLabel
 
 
@@ -9,4 +9,4 @@ class StatsLine(QLabel):
         self.setText("")
 
     def set_stats(self, *, ar: float, od: float, cs: float, hp: float, bpm: int) -> None:
-        self.setText(f"AR: {ar:.2f}  OD: {od:.2f}  CS: {cs:.2f}  HP: {hp:.2f}  BPM: {bpm}")
+        self.setText(f"AR {ar:.1f} · OD {od:.1f} · CS {cs:.1f} · HP {hp:.1f} · BPM {bpm}")
