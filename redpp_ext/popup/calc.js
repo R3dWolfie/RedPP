@@ -28,53 +28,61 @@ function ensureReady() {
  *  }>}
  */
 export async function compute(osuBytes, mods, accuracy) {
-  await ensureReady();
+  await _step("init", () => ensureReady());
+  const bmap = await _step("Beatmap", () => new rosu.Beatmap(osuBytes));
+  try {
+    if (await _step("isSuspicious", () => bmap.isSuspicious())) {
+      throw new Error("(suspicious — refusing to calculate)");
+    }
+    const bpm    = await _step("bmap.bpm", () => bmap.bpm);
+    const attrs  = await _step("attrs.build", () => {
+      const a = { map: bmap };
+      if (mods) a.mods = mods;
+      return new rosu.BeatmapAttributesBuilder(a).build();
+    });
+    try {
+      const ar = attrs.ar, od = attrs.od, cs = attrs.cs, hp = attrs.hp;
+      const clockRate = attrs.clockRate;
 
-  const bmap = new rosu.Beatmap(osuBytes);
-  if (bmap.isSuspicious()) {
-    bmap.free();
-    throw new Error("(suspicious — refusing to calculate)");
+      const basePerf = await _step("base perf", () =>
+        new rosu.Performance({ lazer: true, accuracy: 100 }).calculate(bmap)
+      );
+      const baseStars = basePerf.difficulty.stars;
+      basePerf.free?.();
+
+      const perfArgs = { lazer: true, accuracy };
+      if (mods) perfArgs.mods = mods;
+      const perf = await _step("perf", () =>
+        new rosu.Performance(perfArgs).calculate(bmap)
+      );
+      const out = {
+        pp: perf.pp,
+        stars: perf.difficulty.stars,
+        baseStars,
+        ar, od, cs, hp, clockRate,
+        bpm: bpm * clockRate,
+        maxCombo: perf.difficulty.maxCombo,
+      };
+      perf.free?.();
+      return out;
+    } finally {
+      attrs.free?.();
+    }
+  } finally {
+    bmap.free?.();
   }
+}
 
-  // Mod-adjusted attributes (AR/OD/CS/HP/clockRate). mods + clockRate
-  // come from the constructor args (CommonArgs), no setter needed.
-  const attrsArgs = { map: bmap };
-  if (mods) attrsArgs.mods = mods;
-  const attrsBuilder = new rosu.BeatmapAttributesBuilder(attrsArgs);
-  const attrs = attrsBuilder.build();
-
-  // Base stars (no mods). Cheaper to do a small Performance call than to
-  // build a Difficulty object separately — we can throw away the pp.
-  const basePerf = new rosu.Performance({ lazer: true, accuracy: 100 })
-                       .calculate(bmap);
-  const baseStars = basePerf.difficulty.stars;
-  basePerf.free?.();
-
-  // Mod-adjusted Performance.
-  const perfArgs = { lazer: true, accuracy };
-  if (mods) perfArgs.mods = mods;
-  const perf = new rosu.Performance(perfArgs).calculate(bmap);
-
-  const result = {
-    pp: perf.pp,
-    stars: perf.difficulty.stars,
-    baseStars,
-    ar: attrs.ar,
-    od: attrs.od,
-    cs: attrs.cs,
-    hp: attrs.hp,
-    bpm: bmap.bpm * attrs.clockRate,
-    clockRate: attrs.clockRate,
-    maxCombo: perf.difficulty.maxCombo,
-  };
-
-  // Free WASM-side resources eagerly.
-  perf.free?.();
-  attrs.free?.();
-  attrsBuilder.free?.();
-  bmap.free?.();
-
-  return result;
+/* Wraps a step so failures surface WHICH step blew up. Async-safe. */
+async function _step(name, fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    const msg = (e && (e.message || e.toString())) || "(unknown)";
+    const err = new Error(`${name}: ${msg}`);
+    err.stack = e?.stack;
+    throw err;
+  }
 }
 
 /** Lightweight metadata read straight from the .osu text (no WASM needed).
