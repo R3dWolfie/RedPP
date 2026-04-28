@@ -104,6 +104,11 @@ function renderHero(setIdFallback) {
 // --- bootstrap -----------------------------------------------------
 async function bootstrap() {
   setStatus("loading…");
+  // Footer pulls version from the manifest so it never drifts.
+  try {
+    const v = chrome.runtime.getManifest().version;
+    $("footer").textContent = `RedPP v${v}`;
+  } catch { /* dev environment without runtime — leave default */ }
   // Initial defaults: slider = 100%, no mods, default badge.
   $("acc-val").textContent = "100.0";
   renderSliderFill();
