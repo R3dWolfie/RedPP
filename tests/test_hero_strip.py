@@ -65,3 +65,26 @@ def test_hero_strip_drag_emits_signal(qapp):
     assert spy.count() == 1
     dx, dy = spy.at(0)
     assert dx == 15 and dy == 15
+
+
+def test_hero_strip_pinned_visibility(qapp):
+    from redpp_app.widgets.hero_strip import HeroStrip
+    h = HeroStrip()
+    # default hidden
+    assert h._pinned_label.isHidden()
+    assert h._revert_btn.isHidden()
+    h.set_pinned(True)
+    assert not h._pinned_label.isHidden()
+    assert not h._revert_btn.isHidden()
+    h.set_pinned(False)
+    assert h._pinned_label.isHidden()
+
+
+def test_hero_strip_revert_button_emits(qapp):
+    from redpp_app.widgets.hero_strip import HeroStrip
+    from PySide6.QtTest import QSignalSpy
+    h = HeroStrip()
+    h.set_pinned(True)
+    spy = QSignalSpy(h.revert_clicked)
+    h._revert_btn.click()
+    assert spy.count() == 1

@@ -14,6 +14,7 @@ class HeroStrip(QFrame):
     drag_delta = Signal(int, int)        # dx, dy in window coords
     close_clicked = Signal()
     pin_toggled = Signal()
+    revert_clicked = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -28,6 +29,10 @@ class HeroStrip(QFrame):
         self._artist_label.setText(f"[{artist}]" if artist else "")
         self._title_label.setText(title)
         self._diff_label.setText(difficulty)
+
+    def set_pinned(self, pinned: bool) -> None:
+        self._pinned_label.setVisible(pinned)
+        self._revert_btn.setVisible(pinned)
 
     def set_stars(self, *, base: float, mod: float) -> None:
         self._stars_label.setText(f"{mod:.2f}")
@@ -122,6 +127,24 @@ class HeroStrip(QFrame):
         outer.addLayout(top)
 
         outer.addStretch(1)
+
+        # Override-mode indicator: hidden unless set_pinned(True)
+        pin_row = QHBoxLayout(); pin_row.setContentsMargins(0, 0, 0, 0); pin_row.setSpacing(6)
+        self._pinned_label = QLabel("[pinned]", self)
+        self._pinned_label.setStyleSheet("color: #FFD370; font-size: 9pt;")
+        self._pinned_label.hide()
+        self._revert_btn = QPushButton("↺", self)
+        self._revert_btn.setFixedSize(18, 18)
+        self._revert_btn.setStyleSheet(
+            "background: transparent; border: none; color: #FFD370; font-size: 12pt;")
+        self._revert_btn.setCursor(Qt.PointingHandCursor)
+        self._revert_btn.setToolTip("Revert to live mods")
+        self._revert_btn.clicked.connect(self.revert_clicked.emit)
+        self._revert_btn.hide()
+        pin_row.addWidget(self._pinned_label)
+        pin_row.addWidget(self._revert_btn)
+        pin_row.addStretch(1)
+        outer.addLayout(pin_row)
 
         # bottom: artist / title / diff
         self._artist_label = QLabel("", self); self._artist_label.setObjectName("Artist")

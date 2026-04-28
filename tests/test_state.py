@@ -34,12 +34,25 @@ def test_toggle_mod_sets_override():
     assert "HD" in s.effective_mods()
 
 
-def test_toggle_mod_can_remove_when_already_active():
+def test_toggle_mod_auto_reverts_when_override_matches_live():
+    """When the user toggles back to the live state, override clears
+    automatically — otherwise there's no way out of override mode without
+    a UI button."""
     s = AppState(live_mods="HD")
-    s.toggle_mod("HR")        # adds HR over live
-    s.toggle_mod("HR")        # removes HR; HD stays from override copy
+    s.toggle_mod("HR")        # override = "HDHR"
     assert s.is_overriding() is True
+    s.toggle_mod("HR")        # override = "HD" → matches live → revert
+    assert s.is_overriding() is False
     assert s.effective_mods() == "HD"
+
+
+def test_auto_revert_set_compare_ignores_order():
+    """Auto-revert should compare mod sets, not strings — so HDHR vs HRHD
+    still revert when they're the same set."""
+    s = AppState(live_mods="HRHD")  # weird order
+    s.toggle_mod("DT")        # override = "HRHDDT"
+    s.toggle_mod("DT")        # override = "HRHD" → matches live → revert
+    assert s.is_overriding() is False
 
 
 def test_play_state_label_matches_state():

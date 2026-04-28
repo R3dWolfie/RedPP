@@ -4,9 +4,9 @@ import json
 import os
 from pathlib import Path
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QAction, QActionGroup
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                                  QPushButton)
+                                  QPushButton, QMenu)
 
 from . import __version__
 from .state import AppState, PlayState
@@ -56,6 +56,8 @@ class RedPPMainWindow(QWidget):
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setAttribute(Qt.WA_TranslucentBackground, False)
         self._state = AppState()
+        self._show_live_row_enabled = True
+        self._acc_range = (90.0, 100.0)
         self._build_ui()
         self._restore_persisted()
         self._start_poller()
@@ -69,12 +71,14 @@ class RedPPMainWindow(QWidget):
         self._hero = HeroStrip(self)
         self._hero.drag_delta.connect(self._on_drag)
         self._hero.close_clicked.connect(self.close)
-        self._hero.pin_toggled.connect(self._toggle_always_on_top)
+        self._hero.pin_toggled.connect(self._show_settings_menu)
         outer.addWidget(self._hero)
 
         self._chips = ModChipsRow(self._state, self)
         self._chips.state_changed.connect(self._recalc)
         outer.addWidget(self._chips)
+
+        self._hero.revert_clicked.connect(self._chips.revert_override)
 
         self._stats = StatsLine(self)
         outer.addWidget(self._stats)
@@ -139,10 +143,11 @@ class RedPPMainWindow(QWidget):
             # mod-bumped stars come from RenderData
             self._hero.set_stars(base=self._state.base_stars, mod=rd.stars)
         self._refresh_live_row()
+        self._hero.set_pinned(self._state.is_overriding())
 
     def _refresh_live_row(self) -> None:
         label = self._state.live_row_label()
-        if label is None or self._state.live_play is None:
+        if not self._show_live_row_enabled or label is None or self._state.live_play is None:
             self._live.set_content(label=None, pp=0, acc=0, combo=0, misses=0)
             return
         pp = compute_live_pp(self._state)
@@ -154,20 +159,73 @@ class RedPPMainWindow(QWidget):
     def _on_drag(self, dx: int, dy: int) -> None:
         self.move(self.pos() + QPoint(dx, dy))
 
-    def _toggle_always_on_top(self) -> None:
-        flags = self.windowFlags()
-        on_top = bool(flags & Qt.WindowStaysOnTopHint)
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, not on_top)
+    def _show_settings_menu(self) -> None:
+        menu = QMenu(self)
+
+        on_top = QAction("Always on top", menu, checkable=True)
+        on_top.setChecked(bool(self.windowFlags() & Qt.WindowStaysOnTopHint))
+        on_top.toggled.connect(self._set_always_on_top)
+        menu.addAction(on_top)
+
+        show_live = QAction("Show live row", menu, checkable=True)
+        show_live.setChecked(self._show_live_row_enabled)
+        show_live.toggled.connect(self._set_show_live_row)
+        menu.addAction(show_live)
+
+        menu.addSeparator()
+
+        acc_menu = menu.addMenu("Acc range")
+        group = QActionGroup(acc_menu); group.setExclusive(True)
+        for label, lo, hi in (("90 – 100%", 90.0, 100.0),
+                               ("95 – 100%", 95.0, 100.0),
+                               ("0 – 100%",  0.0, 100.0)):
+            a = QAction(label, acc_menu, checkable=True)
+            a.setChecked(self._acc_range == (lo, hi))
+            a.triggered.connect(lambda _checked=False, lo=lo, hi=hi: self._set_acc_range(lo, hi))
+            group.addAction(a); acc_menu.addAction(a)
+
+        menu.addSeparator()
+        reset = QAction("Reset position", menu)
+        reset.triggered.connect(lambda: self.move(100, 100))
+        menu.addAction(reset)
+
+        # Show menu at the ⋮ button position
+        btn = self._hero._pin_btn
+        menu.exec(btn.mapToGlobal(btn.rect().bottomRight()))
+
+    def _set_always_on_top(self, on: bool) -> None:
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, on)
         self.show()  # re-applying flags hides the window on X11
+
+    def _set_show_live_row(self, on: bool) -> None:
+        self._show_live_row_enabled = on
+        self._refresh_live_row()
+
+    def _set_acc_range(self, lo: float, hi: float) -> None:
+        self._acc_range = (lo, hi)
+        self._slider.set_range(lo, hi)
 
     def _restore_persisted(self) -> None:
         d = _load_persisted()
         if "x" in d and "y" in d:
             self.move(int(d["x"]), int(d["y"]))
+        if "always_on_top" in d:
+            self.setWindowFlag(Qt.WindowStaysOnTopHint, bool(d["always_on_top"]))
+        if "show_live_row" in d:
+            self._show_live_row_enabled = bool(d["show_live_row"])
+        if "acc_range" in d and isinstance(d["acc_range"], list) and len(d["acc_range"]) == 2:
+            lo, hi = float(d["acc_range"][0]), float(d["acc_range"][1])
+            self._acc_range = (lo, hi)
+            self._slider.set_range(lo, hi)
 
     def closeEvent(self, ev) -> None:
         d = _load_persisted()
-        d.update({"x": self.x(), "y": self.y()})
+        d.update({
+            "x": self.x(), "y": self.y(),
+            "always_on_top": bool(self.windowFlags() & Qt.WindowStaysOnTopHint),
+            "show_live_row": self._show_live_row_enabled,
+            "acc_range": [self._acc_range[0], self._acc_range[1]],
+        })
         _save_persisted(d)
         try:
             self._poller.stop()

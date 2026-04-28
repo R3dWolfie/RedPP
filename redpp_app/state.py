@@ -74,7 +74,14 @@ class AppState:
             active.remove(mod)
         else:
             active.append(mod)
-        self.override_mods = _join_mods(active)
+        new_override = _join_mods(active)
+        # Auto-revert when override now equals live (set-wise, order-independent).
+        live_set = set(_split_mods(self.live_mods))
+        new_set = set(_split_mods(new_override))
+        if new_set == live_set:
+            self.override_mods = None
+        else:
+            self.override_mods = new_override
 
     def live_row_label(self) -> Optional[str]:
         return {
