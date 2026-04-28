@@ -13,7 +13,7 @@ class AccSlider(QFrame):
         layout.setSpacing(2)
         self._label = QLabel("Accuracy: 100.0%", self); self._label.setObjectName("AccLabel")
         self._slider = QSlider(Qt.Horizontal, self)
-        self._min = 90.0; self._max = 100.0; self._step = 0.1
+        self._min = 0.0; self._max = 100.0; self._step = 0.1
         self._configure_slider()
         self._slider.valueChanged.connect(self._on_changed)
         layout.addWidget(self._label)

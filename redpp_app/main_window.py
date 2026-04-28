@@ -57,7 +57,7 @@ class RedPPMainWindow(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground, False)
         self._state = AppState()
         self._show_live_row_enabled = True
-        self._acc_range = (90.0, 100.0)
+        self._acc_range = (0.0, 100.0)
         self._build_ui()
         self._restore_persisted()
         self._start_poller()
