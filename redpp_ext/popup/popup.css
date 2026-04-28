@@ -67,19 +67,29 @@ body {
 .diff    { color: var(--text); font-size: 11pt; font-weight: 500; margin-top: 2px; }
 
 /* Chips ------------------------------------------------------------- */
-.chips    { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; }
-.chip-row { display: flex; justify-content: center; gap: 6px; }
+.chips {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 12px;
+}
+.chip-row {
+  display: grid;
+  grid-template-columns: repeat(4, 48px);
+  justify-content: center;
+  gap: 8px;
+}
 .chip {
-  width: 48px; height: 48px;
+  /* Reset UA button styles aggressively before applying ours. */
+  appearance: none; -webkit-appearance: none;
+  margin: 0; padding: 0;
+  width: 48px; height: 48px; flex: none;
   background: transparent;
   color: var(--gold-dim);
   border: 2px solid var(--gold-dim);
-  border-radius: 0;
-  /* hexagonal clip-path (pointy-top) */
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  font-weight: 700; font-size: 10pt;
+  border-radius: 12px;
+  font-family: inherit; font-weight: 800; font-size: 11pt;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  transition: background 80ms, color 80ms;
+  transition: background 80ms, color 80ms, border-color 80ms;
 }
 .chip:hover { color: var(--gold); border-color: var(--gold); }
 .chip.active {

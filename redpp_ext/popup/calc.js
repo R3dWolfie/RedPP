@@ -1,67 +1,78 @@
 /* Thin wrapper over rosu-pp-js. Initializes the WASM module once,
-   exposes computeFromBytes() returning the data the popup needs. */
+   exposes compute() returning the data the popup needs. */
 
 import init, * as rosu from "../vendor/rosu_pp_js.js";
 
 let _ready = null;
 function ensureReady() {
   if (_ready) return _ready;
-  // Resolve the WASM URL relative to the extension root.
-  const wasmUrl = chrome.runtime.getURL("vendor/rosu_pp_js_bg.wasm");
-  _ready = init({ module_or_path: wasmUrl });
+  // Resolve the WASM URL relative to the extension root. chrome.runtime
+  // works in both Chrome and Firefox; "browser" is a Firefox alias.
+  const rt = (typeof chrome !== "undefined" && chrome.runtime)
+    ? chrome.runtime
+    : (typeof browser !== "undefined" ? browser.runtime : null);
+  const wasmUrl = rt ? rt.getURL("vendor/rosu_pp_js_bg.wasm") : "../vendor/rosu_pp_js_bg.wasm";
+  _ready = init(wasmUrl);
   return _ready;
 }
 
 /** Compute pp + mod-adjusted attributes for a beatmap.
  *
- *  @param {Uint8Array} osuBytes - raw .osu file bytes
- *  @param {string}     mods     - concatenated 2-letter acronyms ("HDHR")
- *  @param {number}     accuracy - 0-100
- *  @returns {Promise<{pp:number, stars:number, baseStars:number,
- *                     ar:number, od:number, cs:number, hp:number,
- *                     bpm:number, clockRate:number, maxCombo:number}>}
+ *  @param {Uint8Array} osuBytes  - raw .osu file bytes
+ *  @param {string}     mods      - concatenated 2-letter acronyms ("HDHR")
+ *  @param {number}     accuracy  - 0..100
+ *  @returns {Promise<{
+ *    pp: number, stars: number, baseStars: number,
+ *    ar: number, od: number, cs: number, hp: number,
+ *    bpm: number, clockRate: number, maxCombo: number
+ *  }>}
  */
 export async function compute(osuBytes, mods, accuracy) {
   await ensureReady();
 
   const bmap = new rosu.Beatmap(osuBytes);
-  if (bmap.suspicious) {
+  if (bmap.isSuspicious()) {
     bmap.free();
     throw new Error("(suspicious — refusing to calculate)");
   }
 
-  // Mod-adjusted attributes for the header.
-  const attrsBuilder = new rosu.BeatmapAttributesBuilder({ map: bmap });
-  if (mods) attrsBuilder.mods = mods;
+  // Mod-adjusted attributes (AR/OD/CS/HP/clockRate). mods + clockRate
+  // come from the constructor args (CommonArgs), no setter needed.
+  const attrsArgs = { map: bmap };
+  if (mods) attrsArgs.mods = mods;
+  const attrsBuilder = new rosu.BeatmapAttributesBuilder(attrsArgs);
   const attrs = attrsBuilder.build();
 
-  // Base difficulty (no mods) — used for the chevron decision.
-  const baseDiff = new rosu.Difficulty({}).calculate(bmap);
+  // Base stars (no mods). Cheaper to do a small Performance call than to
+  // build a Difficulty object separately — we can throw away the pp.
+  const basePerf = new rosu.Performance({ lazer: true, accuracy: 100 })
+                       .calculate(bmap);
+  const baseStars = basePerf.difficulty.stars;
+  basePerf.free?.();
 
-  // Performance with current mods + accuracy.
-  const perfArgs = { accuracy, lazer: true };
+  // Mod-adjusted Performance.
+  const perfArgs = { lazer: true, accuracy };
   if (mods) perfArgs.mods = mods;
   const perf = new rosu.Performance(perfArgs).calculate(bmap);
-  const stars = perf.difficulty.stars;
-  const maxCombo = perf.difficulty.maxCombo;
-  const pp = perf.pp;
 
   const result = {
-    pp,
-    stars,
-    baseStars: baseDiff.stars,
+    pp: perf.pp,
+    stars: perf.difficulty.stars,
+    baseStars,
     ar: attrs.ar,
     od: attrs.od,
     cs: attrs.cs,
     hp: attrs.hp,
     bpm: bmap.bpm * attrs.clockRate,
     clockRate: attrs.clockRate,
-    maxCombo,
+    maxCombo: perf.difficulty.maxCombo,
   };
 
-  // Free WASM-side resources eagerly so we don't leak across popup reopens.
-  bmap.free?.(); attrs.free?.(); attrsBuilder.free?.();
-  baseDiff.free?.(); perf.free?.();
+  // Free WASM-side resources eagerly.
+  perf.free?.();
+  attrs.free?.();
+  attrsBuilder.free?.();
+  bmap.free?.();
 
   return result;
 }
