@@ -86,15 +86,21 @@ Both surfaces require [tosu](https://github.com/tosuapp/tosu) running on
 
 ## Browser extension
 
-Manifest v3 web extension (works in both Chrome and Firefox). Open any
-osu.ppy.sh beatmap page (`/b/<id>`, `/beatmaps/<id>`, or
-`/beatmapsets/<setid>#osu/<id>`), click the toolbar icon — same panel
-design as the app, but driven by the URL instead of tosu.
+Manifest v3 web extension. Open any osu.ppy.sh beatmap page (`/b/<id>`,
+`/beatmaps/<id>`, or `/beatmapsets/<setid>#osu/<id>`), click the toolbar
+icon — same panel design as the app, but driven by the URL instead of
+tosu.
 
-**Install (developer mode):**
+**[Install from Firefox Add-ons →](https://addons.mozilla.org/en-US/firefox/addon/redpp/)**
 
-- **Chrome:** Settings → Extensions → Developer mode → "Load unpacked" → pick the `redpp_ext/` directory.
+(Awaiting Mozilla review for first-time publish; link goes live as soon
+as approved. In the meantime, side-load the .zip from
+[Releases](https://github.com/R3dWolfie/RedPP/releases).)
+
+**Install in dev mode** (any browser, any time):
+
 - **Firefox:** `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on" → pick `redpp_ext/manifest.json`.
+- **Chrome / Brave / Edge / etc:** `chrome://extensions/` → Developer mode → "Load unpacked" → pick the `redpp_ext/` directory.
 
 **Build distributable zips:**
 ```bash
