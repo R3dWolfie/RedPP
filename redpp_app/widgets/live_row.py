@@ -16,5 +16,5 @@ class LiveRow(QLabel):
             self.setText("")
             self.hide()
             return
-        self.setText(f"{label} {int(pp)}pp · {acc:.2f}% · {combo}x · {misses}m")
+        self.setText(f"{label} {pp:.0f}pp · {acc:.2f}% · {combo}x · {misses}m")
         self.show()

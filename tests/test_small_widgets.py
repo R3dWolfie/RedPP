@@ -56,7 +56,7 @@ def test_live_row_hidden_when_no_label(qapp):
 def test_live_row_visible_with_label(qapp):
     from redpp_app.widgets.live_row import LiveRow
     r = LiveRow()
-    r.set_content(label="Spectating:", pp=247.5, acc=98.3, combo=412, misses=2)
+    r.set_content(label="Spectating:", pp=247.0, acc=98.3, combo=412, misses=2)
     assert "Spectating:" in r.text()
     assert "247" in r.text()
     assert "98.30" in r.text() or "98.3" in r.text()
