@@ -51,22 +51,6 @@ def test_hero_strip_pin_button_emits_pin_toggle(qapp):
     assert spy.count() == 1
 
 
-def test_hero_strip_drag_emits_signal(qapp):
-    from redpp_app.widgets.hero_strip import HeroStrip
-    h = HeroStrip()
-    h.resize(280, 140)
-    spy = QSignalSpy(h.drag_delta)
-    press = QMouseEvent(QMouseEvent.MouseButtonPress, QPointF(100, 60),
-                         Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-    h.mousePressEvent(press)
-    move = QMouseEvent(QMouseEvent.MouseMove, QPointF(115, 75),
-                        Qt.NoButton, Qt.LeftButton, Qt.NoModifier)
-    h.mouseMoveEvent(move)
-    assert spy.count() == 1
-    dx, dy = spy.at(0)
-    assert dx == 15 and dy == 15
-
-
 def test_hero_strip_pinned_visibility(qapp):
     from redpp_app.widgets.hero_strip import HeroStrip
     h = HeroStrip()

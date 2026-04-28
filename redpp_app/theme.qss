@@ -26,11 +26,8 @@ QWidget {
     color: #FFD370;
 }
 
-/* Mod chip */
-ModChip {
-    background: transparent; border: none;
-    qproperty-active: false;
-}
+/* Mod chip — visual paint is handled in mod_chip.py paintEvent */
+ModChip { background: transparent; border: none; }
 
 /* Stats line */
 QLabel#StatsLine {

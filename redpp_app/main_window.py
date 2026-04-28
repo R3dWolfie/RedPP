@@ -61,7 +61,6 @@ class RedPPMainWindow(QWidget):
         self._build_ui()
         self._restore_persisted()
         self._start_poller()
-        self._drag_origin: QPoint | None = None
 
     # ---- ui -----------------------------------------------------------
     def _build_ui(self) -> None:
@@ -69,7 +68,6 @@ class RedPPMainWindow(QWidget):
         outer.setContentsMargins(0, 0, 0, 0); outer.setSpacing(0)
 
         self._hero = HeroStrip(self)
-        self._hero.drag_delta.connect(self._on_drag)
         self._hero.close_clicked.connect(self.close)
         self._hero.pin_toggled.connect(self._show_settings_menu)
         outer.addWidget(self._hero)
@@ -156,9 +154,6 @@ class RedPPMainWindow(QWidget):
                                 combo=lp.combo, misses=lp.misses)
 
     # ---- window behaviour --------------------------------------------
-    def _on_drag(self, dx: int, dy: int) -> None:
-        self.move(self.pos() + QPoint(dx, dy))
-
     def _show_settings_menu(self) -> None:
         menu = QMenu(self)
 

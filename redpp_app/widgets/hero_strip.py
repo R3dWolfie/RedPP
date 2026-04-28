@@ -11,7 +11,9 @@ _ASSETS = Path(__file__).resolve().parent.parent / "assets"
 
 
 class HeroStrip(QFrame):
-    drag_delta = Signal(int, int)        # dx, dy in window coords
+    """Top of the panel. Drag-to-move uses the compositor's native window
+    move so it works on both X11 and Wayland — Wayland clients can't
+    reposition themselves with QWidget.move()."""
     close_clicked = Signal()
     pin_toggled = Signal()
     revert_clicked = Signal()
@@ -21,7 +23,6 @@ class HeroStrip(QFrame):
         self.setObjectName("HeroStrip")
         self.setFixedHeight(140)
         self._bg_pixmap: Optional[QPixmap] = None
-        self._press_pos: Optional[QPoint] = None
         self._setup_ui()
 
     # ---- public API ---------------------------------------------------
@@ -82,20 +83,16 @@ class HeroStrip(QFrame):
 
     # ---- drag ---------------------------------------------------------
     def mousePressEvent(self, ev) -> None:
+        # Delegate the entire drag to the compositor — works on Wayland
+        # (where QWidget.move() is a no-op for frameless toplevels) and
+        # on X11 (mapped via _NET_WM_MOVERESIZE).
         if ev.button() == Qt.LeftButton:
-            self._press_pos = ev.position().toPoint()
+            top = self.window()
+            wh = top.windowHandle() if top else None
+            if wh is not None and wh.startSystemMove():
+                ev.accept()
+                return
         super().mousePressEvent(ev)
-
-    def mouseMoveEvent(self, ev) -> None:
-        if self._press_pos is not None and (ev.buttons() & Qt.LeftButton):
-            now = ev.position().toPoint()
-            d = now - self._press_pos
-            self.drag_delta.emit(d.x(), d.y())
-        super().mouseMoveEvent(ev)
-
-    def mouseReleaseEvent(self, ev) -> None:
-        self._press_pos = None
-        super().mouseReleaseEvent(ev)
 
     # ---- layout -------------------------------------------------------
     def _setup_ui(self) -> None:
