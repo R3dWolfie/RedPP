@@ -280,3 +280,42 @@ def test_tosu_unreachable():
     c = TosuClient("127.0.0.1", 1)  # closed port
     with pytest.raises(ConnectionError):
         c.fetch_state()
+
+
+def test_watch_dedupes_and_reacts(fake_tosu, tmp_path, monkeypatch, capsys):
+    """Mutate fake tosu state; assert renders happen on change only."""
+    from redpp import run_watch
+    import redpp
+    monkeypatch.setattr(redpp, "IS_TTY", False)
+    monkeypatch.setattr(redpp, "POLL_INTERVAL", 0.05)
+
+    srv, port = fake_tosu
+    osu1 = make_osu(); osu2 = make_osu(ar=10.0)
+    _FakeTosu.payloads = {"/api/v2": {
+        "beatmap": {"path": {"full": osu1, "folder": "", "file": ""}},
+        "play": {"mods": {"name": "HD"}},
+    }}
+
+    _real_sleep = _time.sleep  # capture before monkeypatch replaces it
+    stop_after = [80]  # ~0.5s (80 ticks × 1ms real sleep = ~80ms > 50ms mutate delay)
+    def fake_sleep(t):
+        stop_after[0] -= 1
+        if stop_after[0] <= 0:
+            raise KeyboardInterrupt
+        _real_sleep(0.001)
+    monkeypatch.setattr(redpp.time, "sleep", fake_sleep)
+
+    # mutate after 3 ticks
+    def mutate():
+        _real_sleep(0.05)
+        _FakeTosu.payloads["/api/v2"]["beatmap"]["path"]["full"] = osu2
+        _FakeTosu.payloads["/api/v2"]["play"]["mods"]["name"] = "HDHR"
+    threading.Thread(target=mutate, daemon=True).start()
+
+    rc = run_watch(None, mods_override=None, accs=(95.0, 99.0),
+                    host="127.0.0.1", port=port,
+                    verbose=False, as_json=False, quiet=True)
+    out = capsys.readouterr().out
+    # at least 2 distinct renders — one per state
+    assert out.count("AR") >= 2
+    assert rc == 0

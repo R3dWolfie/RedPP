@@ -554,8 +554,72 @@ def run_repl(map_path: str, *, accs: tuple[float, ...],
         except (ValueError, FileNotFoundError, RuntimeError) as e:
             print(f"error: {e}", file=sys.stderr)
 
-def run_watch(*a, **kw) -> int:  # stubbed in Task 9
-    raise NotImplementedError("watch not yet wired")
+def run_watch(map_path: str | None, *, mods_override: str | None,
+              accs: tuple[float, ...], host: str, port: int,
+              verbose: bool, as_json: bool, quiet: bool) -> int:
+    client = TosuClient(host, port)
+    last_key: tuple[str, str] | None = None
+    no_map_shown = False
+    unreachable_shown = False
+    backoff = POLL_INTERVAL
+    if mods_override is not None:
+        try:
+            parse_score_string(mods_override)  # validate
+        except ValueError as e:
+            print(f"error: bad --mods: {e}", file=sys.stderr); return 2
+
+    try:
+        while True:
+            try:
+                state = client.fetch_state()
+                if unreachable_shown:
+                    if IS_TTY: sys.stdout.write("\r\x1b[2K")
+                    unreachable_shown = False
+                    backoff = POLL_INTERVAL
+            except ConnectionError:
+                if not unreachable_shown:
+                    print(DIM("(tosu unreachable, retrying…)"))
+                    unreachable_shown = True
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 5.0)
+                continue
+
+            override_path = map_path  # CLI-passed path overrides tosu
+
+            if state is None and override_path is None:
+                if not no_map_shown:
+                    print("(no map)")
+                    no_map_shown = True
+                last_key = None
+                time.sleep(POLL_INTERVAL); continue
+            no_map_shown = False
+
+            path = override_path or state.path
+            mods_str = mods_override if mods_override is not None else (state.mods_str if state else "")
+            key = (path, mods_str)
+            if key != last_key:
+                try:
+                    score = parse_score_string(mods_str) if mods_str else ParsedScore()
+                    header, rows = calc_presets(path, score, accs)
+                    print(render_presets(header, rows,
+                                          pinned=mods_override is not None,
+                                          verbose=verbose, as_json=as_json))
+                except RuntimeError as e:
+                    print(f"({e})")
+                except (ValueError, FileNotFoundError) as e:
+                    print(f"error: {e}", file=sys.stderr)
+                last_key = key
+
+            if not quiet and IS_TTY:
+                ts = time.strftime("%H:%M:%S")
+                sys.stdout.write(f"\r{DIM(f'(polling {port} · {ts})')}")
+                sys.stdout.flush()
+            time.sleep(POLL_INTERVAL)
+    except KeyboardInterrupt:
+        if IS_TTY and not quiet:
+            sys.stdout.write("\r\x1b[2K")
+        print()
+        return 0
 
 def _self_test() -> int:  # stubbed in Task 10
     return 0
