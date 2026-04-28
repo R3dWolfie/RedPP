@@ -1,13 +1,31 @@
 # RedPP
 
-EZPP-style osu!(lazer) pp calculator. One file, three modes.
+EZPP-style osu!(lazer) pp calculator. Two surfaces:
 
-## Install
+- **CLI** (`redpp.py`) — one-shot, REPL, and tosu-watch modes
+- **Desktop app** (`redpp_app/`) — frameless always-on-top panel, mod overrides, live in-play pp
+
+## Download (prebuilt binaries)
+
+Grab the latest release from the [Releases page](https://github.com/R3dWolfie/RedPP/releases):
+
+- **Linux:** `RedPP-x86_64.AppImage` (recommended) or the raw `redpp-linux-x86_64` binary
+- **Windows:** `RedPP-windows-x86_64.exe`
+
+No install needed — make executable and run.
+
+## Install (from source)
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install rosu-pp-py
 chmod +x redpp.py
+```
+
+To also run the desktop app:
+```bash
+pip install PySide6
+python -m redpp_app
 ```
 
 ## Usage
@@ -49,3 +67,24 @@ Order-independent. Whatever's missing gets defaulted.
 ## Flags
 
 `--mods`, `--acc`, `--host`, `--port`, `--json`, `--verbose`, `--quiet`, `-w`.
+
+## Desktop app
+
+Compact 280×420 always-on-top panel. Hero strip with the current map's
+blurred background, 4 mod chips (HD/HR/DT/FL — clickable to override
+osu!'s reported mods for what-if calculations), AR/OD/CS/HP/BPM line
+(mod-adjusted), big pp number with cyan S-rank badge, accuracy slider
+(default 90–100%), and an in-play row that surfaces real-time pp during
+play / spectate / replay. ⋮ menu controls always-on-top, live-row
+visibility, accuracy range, and reset position. State persists to
+`~/.config/redpp/state.json` (Linux/macOS) or `%APPDATA%\redpp\state.json`
+(Windows).
+
+Both surfaces require [tosu](https://github.com/tosuapp/tosu) running on
+`127.0.0.1:24050` for live-map auto-detection.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Bundled third-party components (rosu-pp-py,
+PySide6, PyInstaller) retain their own licenses, listed in
+[NOTICE.md](NOTICE.md).
