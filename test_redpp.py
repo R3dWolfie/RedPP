@@ -152,3 +152,35 @@ def test_calc_presets_returns_row():
     assert len(rows) == 3
     assert all(r.pp > 0 for r in rows)
     assert rows[2].pp >= rows[0].pp  # 100% >= 95%
+
+
+def test_render_oneshot_text(monkeypatch):
+    import redpp
+    monkeypatch.setattr(redpp, "IS_TTY", False)  # plain text for assertion
+    from redpp import calc_one, render_oneshot
+    p = make_osu()
+    rd = calc_one(p, parse_score_string("HDHR 99% 1x100 99x300"))
+    out = render_oneshot(rd, verbose=False, as_json=False)
+    assert "->" in out and "pp" in out
+    assert "AR" in out and "OD" in out and "BPM" in out
+    assert "HDHR" in out
+
+def test_render_presets_text(monkeypatch):
+    import redpp
+    monkeypatch.setattr(redpp, "IS_TTY", False)
+    from redpp import calc_presets, render_presets
+    p = make_osu()
+    header, rows = calc_presets(p, parse_score_string("HDHR"), (95.0, 99.0, 100.0))
+    out = render_presets(header, rows, pinned=False, verbose=False, as_json=False)
+    assert "95%" in out and "99%" in out and "100%" in out
+    assert "pp" in out
+
+def test_render_json():
+    from redpp import calc_one, render_oneshot
+    p = make_osu()
+    rd = calc_one(p, parse_score_string("HDHR 99% 1x100 99x300"))
+    out = render_oneshot(rd, verbose=False, as_json=True)
+    obj = json.loads(out)
+    assert obj["mods"] == "HDHR"
+    assert obj["pp"] > 0
+    assert obj["filename"].endswith(".osu")

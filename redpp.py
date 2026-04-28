@@ -308,6 +308,82 @@ def calc_presets(path: str, score: ParsedScore,
     return header_rd, rows
 
 
+def _fmt_rate(rate: float) -> str:
+    return f"  ({rate:.2f}x)" if abs(rate - 1.0) > 1e-3 else ""
+
+
+def _hits_str(rd: RenderData) -> str:
+    parts = []
+    if rd.n300: parts.append(f"{rd.n300}x300")
+    if rd.n100: parts.append(f"{rd.n100}x100")
+    if rd.n50:  parts.append(f"{rd.n50}x50")
+    if rd.misses: parts.append(f"{rd.misses}xMiss")
+    return " ".join(parts) if parts else "-"
+
+
+def _header_lines(rd: RenderData) -> list[str]:
+    return [
+        rd.filename,
+        f"{CYAN(f'{rd.stars:.2f}*')}   "
+        f"AR {rd.ar:.1f}  OD {rd.od:.1f}  CS {rd.cs:.1f}  HP {rd.hp:.1f}  "
+        f"BPM {rd.bpm:.0f}{_fmt_rate(rd.clock_rate)}",
+    ]
+
+
+def _verbose_line(rd: RenderData) -> str:
+    return DIM(f"  aim {rd.pp_aim:.1f} | speed {rd.pp_speed:.1f} | "
+               f"acc {rd.pp_acc:.1f} | diff {rd.pp_difficulty:.1f} | fl {rd.pp_flashlight:.1f}")
+
+
+def render_oneshot(rd: RenderData, *, verbose: bool, as_json: bool, pinned: bool = False) -> str:
+    if as_json:
+        return json.dumps({
+            "filename": rd.filename, "stars": rd.stars,
+            "ar": rd.ar, "od": rd.od, "cs": rd.cs, "hp": rd.hp,
+            "bpm": rd.bpm, "clock_rate": rd.clock_rate,
+            "mods": rd.mods_str, "combo": rd.combo, "max_combo": rd.max_combo,
+            "hits": {"n300": rd.n300, "n100": rd.n100, "n50": rd.n50, "miss": rd.misses},
+            "acc": rd.accuracy, "pp": rd.pp,
+            "pp_aim": rd.pp_aim, "pp_speed": rd.pp_speed, "pp_acc": rd.pp_acc,
+            "pp_difficulty": rd.pp_difficulty, "pp_flashlight": rd.pp_flashlight,
+        })
+    lines = _header_lines(rd)
+    pin = " [pinned]" if pinned else ""
+    mods_disp = rd.mods_str or "NM"
+    combo_disp = (f"{rd.combo}/{rd.max_combo}x" if rd.combo is not None
+                  else f"{rd.max_combo}x")
+    info = (f"mods: {YELL(mods_disp)}{pin}    "
+            f"combo: {combo_disp}   "
+            f"hits: {_hits_str(rd)}   "
+            f"acc: {rd.accuracy:.2f}%")
+    lines.append(info)
+    if verbose:
+        lines.append(_verbose_line(rd))
+    lines.append(f"-> {GREEN(f'{rd.pp:.2f}pp')}")
+    return "\n".join(lines)
+
+
+def render_presets(header: RenderData, rows: list[RenderData], *,
+                    verbose: bool, as_json: bool, pinned: bool = False) -> str:
+    if as_json:
+        return json.dumps({
+            "filename": header.filename, "stars": header.stars,
+            "ar": header.ar, "od": header.od, "cs": header.cs, "hp": header.hp,
+            "bpm": header.bpm, "clock_rate": header.clock_rate,
+            "mods": header.mods_str, "max_combo": header.max_combo,
+            "presets": [{"acc": r.accuracy, "pp": r.pp} for r in rows],
+        })
+    lines = _header_lines(header)
+    mods_disp = header.mods_str or "NM"
+    pin = " [pinned]" if pinned else ""
+    lines.append(f"mods: {YELL(mods_disp)}{pin}    combo: {header.max_combo}x")
+    preset_parts = [f"{r.accuracy:g}%: {GREEN(f'{r.pp:.0f}pp')}" for r in rows]
+    lines.append("   ".join(preset_parts))
+    if verbose:
+        lines.append(_verbose_line(header))
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="redpp", description="EZPP-style osu!(lazer) pp calculator")
     ap.add_argument("map", nargs="?", help=".osu file path (omit to fetch from tosu)")
