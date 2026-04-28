@@ -64,7 +64,7 @@ _RE_HITS      = re.compile(r"(\d+)x(50|100|300|miss|m)\b", re.I)
 _RE_COMBO_LX  = re.compile(r"\bx(\d+)\b")
 _RE_COMBO_RX  = re.compile(r"\b(\d+)x\b")
 _RE_ACC       = re.compile(r"(\d+(?:\.\d+)?)\s*%")
-_RE_MOD       = re.compile(r"\b([A-Za-z]{2})\b")
+_RE_ALPHA_TOK = re.compile(r"\b([A-Za-z]+)\b")
 
 
 def parse_score_string(s: str) -> ParsedScore:
@@ -127,15 +127,8 @@ def parse_score_string(s: str) -> ParsedScore:
         out.accuracy = float(m.group(1))
         text = text[:m.start()] + " " + text[m.end():]
 
-    # set fixed_* flags for any diff override given
-    if out.ar is not None: out.fixed_ar = False
-    if out.od is not None: out.fixed_od = False
-    if out.cs is not None: out.fixed_cs = False
-    if out.hp is not None: out.fixed_hp = False
-
     # 7. remaining alpha tokens → mods (chunk into 2-char pairs)
     mods: list[str] = []
-    _RE_ALPHA_TOK = re.compile(r"\b([A-Za-z]+)\b")
     for m in _RE_ALPHA_TOK.finditer(text):
         word = m.group(1).upper()
         if len(word) % 2 != 0:
