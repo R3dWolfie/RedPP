@@ -384,6 +384,42 @@ def render_presets(header: RenderData, rows: list[RenderData], *,
     return "\n".join(lines)
 
 
+def _parse_acc_arg(s: str | None) -> tuple[float, ...]:
+    if not s:
+        return DEFAULT_ACC_PRESETS
+    try:
+        return tuple(float(x.strip()) for x in s.split(","))
+    except ValueError:
+        raise ValueError(f"invalid --acc list: {s!r}")
+
+
+def run_oneshot(map_path: str, score_str: str, *, verbose: bool, as_json: bool,
+                accs: tuple[float, ...]) -> int:
+    score = parse_score_string(score_str)
+    if score.is_bare_mods():
+        header, rows = calc_presets(map_path, score, accs)
+        print(render_presets(header, rows, pinned=False, verbose=verbose, as_json=as_json))
+    else:
+        rd = calc_one(map_path, score)
+        print(render_oneshot(rd, verbose=verbose, as_json=as_json))
+    return 0
+
+
+class TosuClient:  # stubbed in Task 7
+    def __init__(self, host: str, port: int) -> None:
+        self.host = host; self.port = port
+    def fetch_state(self): raise NotImplementedError("tosu client not yet wired")
+
+def run_repl(*a, **kw) -> int:  # stubbed in Task 8
+    raise NotImplementedError("repl not yet wired")
+
+def run_watch(*a, **kw) -> int:  # stubbed in Task 9
+    raise NotImplementedError("watch not yet wired")
+
+def _self_test() -> int:  # stubbed in Task 10
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="redpp", description="EZPP-style osu!(lazer) pp calculator")
     ap.add_argument("map", nargs="?", help=".osu file path (omit to fetch from tosu)")
@@ -398,8 +434,40 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quiet", action="store_true", help="hide watch-mode footer")
     ap.add_argument("--self-test", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
-    print("redpp skeleton — args:", args)
-    return 0
+    try:
+        accs = _parse_acc_arg(args.acc)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr); return 2
+
+    if args.self_test:
+        return _self_test()
+
+    if args.watch:
+        return run_watch(args.map, mods_override=args.mods, accs=accs,
+                          host=args.host, port=args.port,
+                          verbose=args.verbose, as_json=args.as_json,
+                          quiet=args.quiet)
+
+    map_path = args.map
+    if map_path is None:
+        # tosu auto-fetch (Task 7)
+        client = TosuClient(args.host, args.port)
+        try:
+            st = client.fetch_state()
+        except Exception as e:
+            print(f"error: tosu fetch failed: {e}", file=sys.stderr); return 1
+        if st is None:
+            print("error: tosu has no current map", file=sys.stderr); return 1
+        map_path = st.path
+
+    if args.score is None:
+        return run_repl(map_path, accs=accs, verbose=args.verbose, as_json=args.as_json)
+
+    try:
+        return run_oneshot(map_path, args.score, verbose=args.verbose,
+                            as_json=args.as_json, accs=accs)
+    except (ValueError, FileNotFoundError, RuntimeError) as e:
+        print(f"error: {e}", file=sys.stderr); return 1
 
 
 if __name__ == "__main__":
