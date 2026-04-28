@@ -405,10 +405,103 @@ def run_oneshot(map_path: str, score_str: str, *, verbose: bool, as_json: bool,
     return 0
 
 
-class TosuClient:  # stubbed in Task 7
-    def __init__(self, host: str, port: int) -> None:
-        self.host = host; self.port = port
-    def fetch_state(self): raise NotImplementedError("tosu client not yet wired")
+@dataclass
+class TosuState:
+    path: str
+    mods_str: str
+
+
+class TosuClient:
+    def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, timeout: float = 1.5) -> None:
+        self.base = f"http://{host}:{port}"
+        self.timeout = timeout
+
+    def _get(self, path: str) -> dict | None:
+        url = f"{self.base}{path}"
+        try:
+            with urllib.request.urlopen(url, timeout=self.timeout) as r:
+                if r.status != 200:
+                    return None
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError:
+            return None
+        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError) as e:
+            raise ConnectionError(f"tosu unreachable at {self.base}: {e}") from e
+
+    def fetch_state(self) -> TosuState | None:
+        data = self._get("/api/v2")
+        if data is not None:
+            st = self._parse_v2(data)
+            if st is not None:
+                return st
+        data = self._get("/json")
+        if data is not None:
+            return self._parse_json(data)
+        return None
+
+    @staticmethod
+    def _parse_v2(d: dict) -> TosuState | None:
+        bm = (d.get("beatmap") or {})
+        path_obj = (bm.get("path") or {})
+        full = path_obj.get("full") or ""
+        if full and Path(full).is_file():
+            return TosuState(path=full, mods_str=TosuClient._extract_mods(d))
+        folder = path_obj.get("folder") or ""
+        file_ = path_obj.get("file") or ""
+        if not (folder and file_):
+            return None
+        if Path(folder).is_absolute():
+            p = Path(folder) / file_
+        else:
+            songs = ((d.get("folders") or {}).get("beatmap")
+                     or (d.get("folders") or {}).get("songs") or "")
+            if not songs:
+                return None
+            p = Path(songs) / folder / file_
+        if not p.is_file():
+            return None
+        return TosuState(path=str(p), mods_str=TosuClient._extract_mods(d))
+
+    @staticmethod
+    def _parse_json(d: dict) -> TosuState | None:
+        menu = d.get("menu") or {}
+        bm = menu.get("bm") or {}
+        path_obj = bm.get("path") or {}
+        folder = path_obj.get("folder") or ""
+        file_ = path_obj.get("file") or ""
+        if not (folder and file_):
+            return None
+        if Path(folder).is_absolute():
+            p = Path(folder) / file_
+        else:
+            songs = ((d.get("settings") or {}).get("folders") or {}).get("songs") or ""
+            if not songs:
+                return None
+            p = Path(songs) / folder / file_
+        if not p.is_file():
+            return None
+        return TosuState(path=str(p), mods_str=TosuClient._extract_mods_json(d))
+
+    @staticmethod
+    def _extract_mods(d: dict) -> str:
+        for branch in ("play", "menu"):
+            mods = ((d.get(branch) or {}).get("mods") or {})
+            arr = mods.get("array")
+            if arr:
+                acronyms = [m.get("acronym", "") for m in arr if isinstance(m, dict)]
+                joined = "".join(a for a in acronyms if a)
+                if joined: return joined
+            for k in ("name", "acronym", "str"):
+                v = mods.get(k)
+                if v:
+                    return "".join(re.findall(r"[A-Za-z]{2}", v)).upper()
+        return ""
+
+    @staticmethod
+    def _extract_mods_json(d: dict) -> str:
+        mods = ((d.get("menu") or {}).get("mods") or {})
+        v = mods.get("str") or mods.get("name") or ""
+        return "".join(re.findall(r"[A-Za-z]{2}", v)).upper()
 
 def run_repl(*a, **kw) -> int:  # stubbed in Task 8
     raise NotImplementedError("repl not yet wired")

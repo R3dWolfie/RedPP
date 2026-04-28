@@ -184,3 +184,99 @@ def test_render_json():
     assert obj["mods"] == "HDHR"
     assert obj["pp"] > 0
     assert obj["filename"].endswith(".osu")
+
+
+import threading
+import http.server
+import socketserver
+import time as _time
+
+class _FakeTosu(http.server.BaseHTTPRequestHandler):
+    payloads: dict[str, dict] = {}
+    def do_GET(self):
+        body = self.payloads.get(self.path)
+        if body is None:
+            self.send_response(404); self.end_headers(); return
+        data = json.dumps(body).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+    def log_message(self, *a, **kw): pass
+
+
+@pytest.fixture
+def fake_tosu():
+    srv = socketserver.TCPServer(("127.0.0.1", 0), _FakeTosu)
+    port = srv.server_address[1]
+    t = threading.Thread(target=srv.serve_forever, daemon=True); t.start()
+    yield srv, port
+    srv.shutdown(); srv.server_close()
+
+
+def test_tosu_v2_absolute_path(fake_tosu, tmp_path):
+    from redpp import TosuClient
+    srv, port = fake_tosu
+    osu = tmp_path / "song.osu"; osu.write_text("osu file format v14\n[HitObjects]\n")
+    _FakeTosu.payloads = {"/api/v2": {
+        "beatmap": {"path": {"full": str(osu), "folder": "", "file": ""}},
+        "play": {"mods": {"name": "HDHR"}},
+    }}
+    c = TosuClient("127.0.0.1", port)
+    st = c.fetch_state()
+    assert st is not None
+    assert st.path == str(osu)
+    assert st.mods_str == "HDHR"
+
+
+def test_tosu_v2_joined_path(fake_tosu, tmp_path):
+    from redpp import TosuClient
+    srv, port = fake_tosu
+    folder = tmp_path / "456 Artist - Title"; folder.mkdir()
+    osu = folder / "Title [Hard].osu"; osu.write_text("osu file format v14\n[HitObjects]\n")
+    _FakeTosu.payloads = {"/api/v2": {
+        "beatmap": {"path": {"full": "", "folder": folder.name, "file": osu.name}},
+        "folders": {"songs": str(tmp_path), "beatmap": ""},
+        "play": {"mods": {"array": [{"acronym": "HD"}, {"acronym": "DT"}]}},
+    }}
+    c = TosuClient("127.0.0.1", port)
+    st = c.fetch_state()
+    assert st is not None
+    assert st.path == str(osu)
+    assert "HD" in st.mods_str and "DT" in st.mods_str
+
+
+def test_tosu_json_fallback(fake_tosu, tmp_path):
+    from redpp import TosuClient
+    srv, port = fake_tosu
+    folder = tmp_path / "Songs"; folder.mkdir()
+    sub = folder / "1 A - B"; sub.mkdir()
+    osu = sub / "B [Z].osu"; osu.write_text("osu file format v14\n[HitObjects]\n")
+    _FakeTosu.payloads = {
+        "/api/v2": None,  # 404
+        "/json": {
+            "settings": {"folders": {"songs": str(folder)}},
+            "menu": {"bm": {"path": {"folder": sub.name, "file": osu.name}},
+                      "mods": {"str": "HD,FL"}},
+        },
+    }
+    c = TosuClient("127.0.0.1", port)
+    st = c.fetch_state()
+    assert st is not None and st.path == str(osu)
+    assert "HD" in st.mods_str and "FL" in st.mods_str
+
+
+def test_tosu_no_map_returns_none(fake_tosu):
+    from redpp import TosuClient
+    srv, port = fake_tosu
+    _FakeTosu.payloads = {"/api/v2": {"beatmap": {"path": {"full": "", "folder": "", "file": ""}}}}
+    c = TosuClient("127.0.0.1", port)
+    assert c.fetch_state() is None
+
+
+def test_tosu_unreachable():
+    from redpp import TosuClient
+    c = TosuClient("127.0.0.1", 1)  # closed port
+    with pytest.raises(ConnectionError):
+        c.fetch_state()
