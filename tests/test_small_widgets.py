@@ -27,6 +27,16 @@ def test_pp_result_format(qapp):
     assert "99.5%" in p._label.text()
 
 
+def test_format_pp_thresholds():
+    from redpp_app.widgets.pp_result import format_pp
+    assert format_pp(0) == "0"
+    assert format_pp(905.4) == "905"
+    assert format_pp(9999) == "9999"
+    assert format_pp(12345) == "12,345"           # 4-5 digits → grouped
+    assert format_pp(100_500) == "100K"            # 100K → K-suffix rounded
+    assert format_pp(86_475_872) == "86.5M"        # Aspire territory
+
+
 def test_compute_rank_thresholds():
     from redpp_app.widgets.pp_result import compute_rank
     assert compute_rank(100.0) == "SS"

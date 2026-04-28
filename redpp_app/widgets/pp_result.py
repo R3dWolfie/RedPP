@@ -15,6 +15,19 @@ from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QPixmap
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel
 
 
+def format_pp(pp: float) -> str:
+    """Compact pp display: comma-grouped for 4–5 digit values, K/M
+    suffix for the absurd Aspire-tier numbers that would otherwise blow
+    past the panel width."""
+    if pp >= 1_000_000:
+        return f"{pp / 1_000_000:.1f}M"
+    if pp >= 100_000:
+        return f"{pp / 1_000:.0f}K"
+    if pp >= 10_000:
+        return f"{pp:,.0f}"
+    return f"{pp:.0f}"
+
+
 def compute_rank(accuracy: float) -> str:
     """Return 'SS' | 'S' | 'A' | 'B' | 'C' | 'D' for an accuracy 0-100."""
     if accuracy >= 100.0:
@@ -81,4 +94,4 @@ class PPResult(QFrame):
     def set_pp(self, pp: float, accuracy: float) -> None:
         rank = compute_rank(accuracy)
         self._badge.setPixmap(make_rank_pixmap(rank, self.BADGE_PX))
-        self._label.setText(f"{pp:.0f}pp for {accuracy:.1f}%")
+        self._label.setText(f"{format_pp(pp)}pp for {accuracy:.1f}%")

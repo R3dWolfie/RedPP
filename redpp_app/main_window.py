@@ -187,8 +187,16 @@ class RedPPMainWindow(QWidget):
             group.addAction(a); acc_menu.addAction(a)
 
         menu.addSeparator()
-        reset = QAction("Reset position", menu)
-        reset.triggered.connect(lambda: self.move(100, 100))
+        # Wayland does not let a client programmatically reposition a
+        # frameless toplevel — only the compositor can. We try move() (a
+        # no-op on Wayland but works on X11) and always wipe the saved
+        # x/y so next launch is fresh. Label reflects that on Wayland the
+        # change isn't immediate.
+        from PySide6.QtGui import QGuiApplication
+        is_wayland = QGuiApplication.platformName().lower().startswith("wayland")
+        reset_label = "Reset position (next launch)" if is_wayland else "Reset position"
+        reset = QAction(reset_label, menu)
+        reset.triggered.connect(self._reset_position)
         menu.addAction(reset)
 
         # Show menu at the ⋮ button position
@@ -206,6 +214,16 @@ class RedPPMainWindow(QWidget):
     def _set_acc_range(self, lo: float, hi: float) -> None:
         self._acc_range = (lo, hi)
         self._slider.set_range(lo, hi)
+
+    def _reset_position(self) -> None:
+        # X11: move() works immediately. Wayland: compositor controls
+        # placement, so move() is a no-op — but clearing the persisted
+        # x/y means the next launch starts at the compositor's default.
+        self.move(100, 100)
+        d = _load_persisted()
+        d.pop("x", None)
+        d.pop("y", None)
+        _save_persisted(d)
 
     # Bumped whenever a setting's default changes — drops stale values
     # from older state.json on first launch with the new code.
