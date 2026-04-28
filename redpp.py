@@ -1,4 +1,4 @@
-#!/var/home/red/PycharmProjects/RedPP/.venv/bin/python3
+#!/usr/bin/env python3
 """redpp — EZPP-style osu!(lazer) pp calculator (one-shot / REPL / watch)."""
 from __future__ import annotations
 import argparse
