@@ -621,8 +621,38 @@ def run_watch(map_path: str | None, *, mods_override: str | None,
         print()
         return 0
 
-def _self_test() -> int:  # stubbed in Task 10
-    return 0
+def _self_test() -> int:
+    """Minimal parser regression — runs without pytest."""
+    cases: list[tuple[str, dict]] = [
+        ("HDHR 94.30% 8x50 42x100 700x300",
+         {"mods": "HDHR", "accuracy": 94.30, "n50": 8, "n100": 42, "n300": 700}),
+        ("HDDT 98.5% 5xMiss x650",
+         {"mods": "HDDT", "misses": 5, "combo": 650}),
+        ("1.3x 99% ar10",
+         {"clock_rate": 1.3, "ar": 10.0, "accuracy": 99.0}),
+        ("100%", {"accuracy": 100.0, "mods": ""}),
+        ("HDHR", {"mods": "HDHR", "accuracy": None}),
+    ]
+    failed = 0
+    for s, expect in cases:
+        try:
+            r = parse_score_string(s)
+            for k, v in expect.items():
+                got = getattr(r, k)
+                if got != v:
+                    print(f"FAIL {s!r}: {k} expected {v!r}, got {got!r}", file=sys.stderr)
+                    failed += 1; break
+            else:
+                print(f"ok   {s!r}")
+        except Exception as e:
+            print(f"FAIL {s!r}: raised {type(e).__name__}: {e}", file=sys.stderr); failed += 1
+    # error case
+    try:
+        parse_score_string("ZZ 99%")
+        print("FAIL: 'ZZ 99%' should have raised", file=sys.stderr); failed += 1
+    except ValueError:
+        print("ok   'ZZ 99%' raised as expected")
+    return 0 if failed == 0 else 1
 
 
 def main(argv: list[str] | None = None) -> int:
