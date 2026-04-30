@@ -109,6 +109,7 @@ class RedPPMainWindow(QWidget):
         self._state.path = st.path
         self._state.live_play = st.live_play
         self._state.play_state = st.play_state
+        self._state.lazer = st.lazer
         self._state.title = st.title
         self._state.artist = st.artist
         self._state.difficulty = st.difficulty

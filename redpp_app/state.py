@@ -45,6 +45,8 @@ class AppState:
     slider_acc: float = 100.0
     play_state: PlayState = PlayState.IDLE
     live_play: Optional[LivePlay] = None    # populated when play_state != IDLE
+    lazer: bool = True                      # tosu reports client=lazer|stable;
+                                             # flips the pp algorithm accordingly
 
     # Map metadata for header rendering (filled by the renderer, not the poller)
     title: str = ""

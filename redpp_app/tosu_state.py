@@ -94,11 +94,16 @@ def extract_state(payload: dict) -> Optional[AppState]:
             accuracy=float(play.get("accuracy", 100.0)),
         )
 
+    # tosu reports "lazer" or "stable" — defaults to lazer if missing.
+    client = str(payload.get("client", "")).lower()
+    is_lazer = client != "stable"
+
     return AppState(
         path=path,
         live_mods=live_mods,
         play_state=play_state,
         live_play=live_play,
+        lazer=is_lazer,
         title=md.get("title", ""),
         artist=md.get("artist", ""),
         difficulty=md.get("difficulty", ""),

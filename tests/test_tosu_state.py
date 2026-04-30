@@ -97,3 +97,25 @@ def test_extract_handles_array_mods_form():
     p["menu"]["mods"] = {"array": [{"acronym": "HD"}, {"acronym": "FL"}]}
     s = extract_state(p)
     assert s.live_mods == "HDFL"
+
+
+def test_extract_lazer_client_sets_lazer_true():
+    """Default tosu payload reports client=lazer → state.lazer=True."""
+    s = extract_state(_payload())
+    assert s.lazer is True
+
+
+def test_extract_stable_client_sets_lazer_false():
+    """When tosu reports stable, the pp algorithm flag flips."""
+    p = _payload()
+    p["client"] = "stable"
+    s = extract_state(p)
+    assert s.lazer is False
+
+
+def test_extract_missing_client_defaults_to_lazer():
+    """Older tosu builds may omit the client field — default to lazer."""
+    p = _payload()
+    p.pop("client", None)
+    s = extract_state(p)
+    assert s.lazer is True

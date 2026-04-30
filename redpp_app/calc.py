@@ -22,7 +22,7 @@ def compute_render(state: AppState):
     score = redpp.ParsedScore(
         mods=state.effective_mods(),
         accuracy=state.slider_acc,
-        lazer=True,
+        lazer=state.lazer,
     )
     try:
         return redpp.calc_one(state.path, score)
@@ -38,7 +38,7 @@ def compute_live_pp(state: AppState) -> float:
     score = redpp.ParsedScore(
         mods=state.live_mods,         # always live mods, not override
         n300=lp.n300, n100=lp.n100, n50=lp.n50, misses=lp.misses,
-        combo=lp.combo, lazer=True,
+        combo=lp.combo, lazer=state.lazer,
     )
     try:
         rd = redpp.calc_one(state.path, score)
