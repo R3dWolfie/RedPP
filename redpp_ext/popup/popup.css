@@ -132,6 +132,38 @@ body {
   cursor: pointer;
 }
 
+/* Hit-count inputs (Combo · 100s · 50s · Miss) ---------------------- */
+.hits-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 4px 12px 8px;
+}
+.hit-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.hit-cell > span {
+  color: var(--muted); font-size: 8pt;
+}
+.hit-input {
+  width: 100%;
+  background: #2C374B;
+  color: #FFFFFF;
+  border: 1px solid #3A465E;
+  border-radius: 4px;
+  padding: 3px 4px;
+  font-family: inherit;
+  font-size: 10pt;
+  font-weight: 600;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.hit-input:focus { outline: none; border-color: var(--gold); }
+.hit-input::-webkit-inner-spin-button,
+.hit-input::-webkit-outer-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+
 /* Status / footer -------------------------------------------------- */
 .status {
   font-size: 9pt; color: var(--grey);

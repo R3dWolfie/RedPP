@@ -22,6 +22,12 @@ const state = {
   activeMods: new Set(),
   accuracy: 100.0,
   baseStars: 0.0,
+  // User-typed hit counts. combo=null means "FC" (= map's max combo).
+  maxCombo: 0,
+  combo: null,
+  n100: 0,
+  n50:  0,
+  misses: 0,
 };
 
 // --- helpers -------------------------------------------------------
@@ -75,7 +81,13 @@ function effectiveMods() {
 async function recompute() {
   if (!state.osuBytes) return;
   try {
-    const r = await compute(state.osuBytes, effectiveMods(), state.accuracy);
+    const score = {
+      combo: state.combo,
+      n100: state.n100,
+      n50: state.n50,
+      misses: state.misses,
+    };
+    const r = await compute(state.osuBytes, effectiveMods(), state.accuracy, score);
     $("stars").textContent = r.stars.toFixed(2);
     $("chevron").hidden = !(r.stars > state.baseStars + 0.05);
     $("stats").textContent =
@@ -84,6 +96,16 @@ async function recompute() {
     renderBadge(rank);
     $("pp-text").textContent =
       `${formatPp(r.pp)}pp for ${state.accuracy.toFixed(1)}%`;
+
+    // First map render: snap the combo input to the new max_combo so the
+    // user sees "FC = max" and can type a smaller value for sliderbreaks.
+    if (state.maxCombo !== r.maxCombo) {
+      state.maxCombo = r.maxCombo;
+      const cb = $("hit-combo");
+      cb.max = r.maxCombo;
+      // If the user hadn't customized combo, refresh the displayed value.
+      if (state.combo === null) cb.value = r.maxCombo;
+    }
   } catch (e) {
     setStatus(`calc failed: ${e.message}`, true);
   }
@@ -171,6 +193,25 @@ function wireEvents() {
     renderSliderFill();
     recompute();
   });
+
+  // Hit-count inputs: combo / 100s / 50s / miss.
+  // combo is special — when the value equals max_combo, treat as FC (null).
+  $("hit-combo").addEventListener("input", (e) => {
+    const v = parseInt(e.target.value, 10);
+    state.combo = (Number.isFinite(v) && v < state.maxCombo) ? v : null;
+    recompute();
+  });
+  for (const [id, key] of [
+    ["hit-n100", "n100"],
+    ["hit-n50",  "n50"],
+    ["hit-miss", "misses"],
+  ]) {
+    $(id).addEventListener("input", (e) => {
+      const v = parseInt(e.target.value, 10);
+      state[key] = Number.isFinite(v) && v > 0 ? v : 0;
+      recompute();
+    });
+  }
 }
 
 // --- go ------------------------------------------------------------

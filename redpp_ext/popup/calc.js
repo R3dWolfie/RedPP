@@ -21,13 +21,18 @@ function ensureReady() {
  *  @param {Uint8Array} osuBytes  - raw .osu file bytes
  *  @param {string}     mods      - concatenated 2-letter acronyms ("HDHR")
  *  @param {number}     accuracy  - 0..100
+ *  @param {object}    [score]    - optional explicit hit counts
+ *  @param {number|null} [score.combo]   - null/undefined = FC at max combo
+ *  @param {number}      [score.n100=0]
+ *  @param {number}      [score.n50=0]
+ *  @param {number}      [score.misses=0]
  *  @returns {Promise<{
  *    pp: number, stars: number, baseStars: number,
  *    ar: number, od: number, cs: number, hp: number,
  *    bpm: number, clockRate: number, maxCombo: number
  *  }>}
  */
-export async function compute(osuBytes, mods, accuracy) {
+export async function compute(osuBytes, mods, accuracy, score = {}) {
   await _step("init", () => ensureReady());
   const bmap = await _step("Beatmap", () => new rosu.Beatmap(osuBytes));
   try {
@@ -52,6 +57,12 @@ export async function compute(osuBytes, mods, accuracy) {
 
       const perfArgs = { lazer: true, accuracy };
       if (mods) perfArgs.mods = mods;
+      // Optional explicit hit counts. Only set when non-default so the
+      // FC-at-X% path stays unchanged for users who don't touch them.
+      if (score.combo != null)        perfArgs.combo  = score.combo;
+      if ((score.n100 || 0) > 0)      perfArgs.n100   = score.n100;
+      if ((score.n50  || 0) > 0)      perfArgs.n50    = score.n50;
+      if ((score.misses || 0) > 0)    perfArgs.misses = score.misses;
       const perf = await _step("perf", () =>
         new rosu.Performance(perfArgs).calculate(bmap)
       );
