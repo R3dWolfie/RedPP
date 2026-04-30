@@ -15,15 +15,32 @@ from .state import AppState, PlayState
 def compute_render(state: AppState):
     """Slider-driven what-if pp.
 
+    Slider acc + (optional) explicit combo/n100/n50/miss inputs. When
+    the user has typed any non-default hit value, rosu-pp uses those
+    counts and the slider's accuracy as the target — letting it derive
+    n300 to fit. When everything's at defaults, this collapses to
+    "FC at slider's %".
+
     Returns RenderData or None when the path is missing or the map is
     suspicious."""
     if not state.path:
         return None
-    score = redpp.ParsedScore(
+    kwargs = dict(
         mods=state.effective_mods(),
         accuracy=state.slider_acc,
         lazer=state.lazer,
     )
+    # Only thread through the user-typed counts when they're non-default,
+    # so the FC path is unchanged for users who don't touch the inputs.
+    if state.score_combo is not None:
+        kwargs["combo"] = state.score_combo
+    if state.score_n100 > 0:
+        kwargs["n100"] = state.score_n100
+    if state.score_n50 > 0:
+        kwargs["n50"] = state.score_n50
+    if state.score_misses > 0:
+        kwargs["misses"] = state.score_misses
+    score = redpp.ParsedScore(**kwargs)
     try:
         return redpp.calc_one(state.path, score)
     except (FileNotFoundError, RuntimeError):

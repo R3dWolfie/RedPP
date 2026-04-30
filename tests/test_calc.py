@@ -62,6 +62,53 @@ def test_compute_render_threads_lazer_flag(monkeypatch):
     assert captured == [True, False]
 
 
+def test_compute_render_threads_score_inputs(monkeypatch):
+    """When the user types non-default combo / hit counts, those values
+    must reach the underlying redpp.ParsedScore."""
+    import redpp
+    from redpp_app.calc import compute_render
+    p = make_osu()
+    captured = {}
+    real = redpp.calc_one
+    def fake(path, score):
+        captured["combo"] = score.combo
+        captured["n100"] = score.n100
+        captured["n50"] = score.n50
+        captured["misses"] = score.misses
+        captured["accuracy"] = score.accuracy
+        return real(path, score)
+    monkeypatch.setattr(redpp, "calc_one", fake)
+
+    state = AppState(path=p, slider_acc=99.0,
+                     score_combo=500, score_n100=2, score_n50=1, score_misses=3)
+    compute_render(state)
+    assert captured == {
+        "combo": 500, "n100": 2, "n50": 1, "misses": 3,
+        "accuracy": 99.0,
+    }
+
+
+def test_compute_render_omits_score_inputs_when_default(monkeypatch):
+    """Default state (combo=None, hits=0) should NOT pass any explicit
+    hit kwargs through — preserves the FC-at-X% behaviour from before."""
+    import redpp
+    from redpp_app.calc import compute_render
+    p = make_osu()
+    captured = {}
+    real = redpp.calc_one
+    def fake(path, score):
+        captured["combo"] = score.combo
+        captured["n100"] = score.n100
+        captured["n50"] = score.n50
+        captured["misses"] = score.misses
+        return real(path, score)
+    monkeypatch.setattr(redpp, "calc_one", fake)
+
+    compute_render(AppState(path=p, slider_acc=98.5))
+    # ParsedScore defaults: all None when not passed (per its dataclass).
+    assert captured == {"combo": None, "n100": None, "n50": None, "misses": None}
+
+
 def test_compute_live_pp_threads_lazer_flag(monkeypatch):
     """Same plumbing check for the in-play path."""
     import redpp

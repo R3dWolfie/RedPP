@@ -48,6 +48,13 @@ class AppState:
     lazer: bool = True                      # tosu reports client=lazer|stable;
                                              # flips the pp algorithm accordingly
 
+    # User-typed score state for the "what-if with these specific hits"
+    # row below the slider. None / 0 means "use slider's FC-at-X% default".
+    score_combo: Optional[int] = None       # None = FC (max combo of map)
+    score_n100: int = 0
+    score_n50: int = 0
+    score_misses: int = 0
+
     # Map metadata for header rendering (filled by the renderer, not the poller)
     title: str = ""
     artist: str = ""

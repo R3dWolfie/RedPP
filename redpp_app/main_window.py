@@ -17,6 +17,7 @@ from .widgets.mod_chips_row import ModChipsRow
 from .widgets.stats_line import StatsLine
 from .widgets.pp_result import PPResult
 from .widgets.acc_slider import AccSlider
+from .widgets.hit_inputs import HitInputs
 from .widgets.live_row import LiveRow
 from .widgets.footer import Footer
 
@@ -51,7 +52,7 @@ def _save_persisted(d: dict) -> None:
 class RedPPMainWindow(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setFixedSize(340, 460)
+        self.setFixedSize(340, 500)
         self.setWindowFlag(Qt.FramelessWindowHint, True)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setAttribute(Qt.WA_TranslucentBackground, False)
@@ -87,6 +88,10 @@ class RedPPMainWindow(QWidget):
         self._slider = AccSlider(self)
         self._slider.acc_changed.connect(self._on_slider)
         outer.addWidget(self._slider)
+
+        self._hits = HitInputs(self)
+        self._hits.state_changed.connect(self._on_hit_inputs)
+        outer.addWidget(self._hits)
 
         self._live = LiveRow(self)
         outer.addWidget(self._live)
@@ -133,6 +138,13 @@ class RedPPMainWindow(QWidget):
         self._state.slider_acc = acc
         self._recalc()
 
+    def _on_hit_inputs(self, combo, n100: int, n50: int, misses: int) -> None:
+        self._state.score_combo = combo
+        self._state.score_n100 = n100
+        self._state.score_n50 = n50
+        self._state.score_misses = misses
+        self._recalc()
+
     def _recalc(self) -> None:
         rd = compute_render(self._state)
         if rd is not None:
@@ -141,6 +153,8 @@ class RedPPMainWindow(QWidget):
             self._pp.set_pp(rd.pp, rd.accuracy)
             # mod-bumped stars come from RenderData
             self._hero.set_stars(base=self._state.base_stars, mod=rd.stars)
+            # Update the combo input's upper bound when the map changes.
+            self._hits.set_max_combo(rd.max_combo)
         self._refresh_live_row()
         self._hero.set_pinned(self._state.is_overriding())
 

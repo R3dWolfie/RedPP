@@ -57,6 +57,15 @@ QSlider::handle:horizontal {
     border: 2px solid #FFD370;
 }
 
+/* Hit inputs row (Combo · 100s · 50s · Miss) */
+QLabel#HitLabel { color: #B0B6C2; font-size: 8pt; }
+QSpinBox#HitSpin {
+    background: #2C374B; color: #FFFFFF;
+    border: 1px solid #3A465E; border-radius: 4px;
+    padding: 2px 4px; font-size: 10pt; font-weight: 600;
+}
+QSpinBox#HitSpin:focus { border-color: #FFD370; }
+
 /* Live row */
 QLabel#LiveRow { color: #92E0FF; font-size: 10pt; }
 
