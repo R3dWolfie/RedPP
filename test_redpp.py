@@ -1,8 +1,33 @@
+import importlib
 import json
 import re
+import sys
 import tempfile
 import pytest
 from redpp import parse_score_string, ParsedScore
+
+
+def test_redpp_imports_with_none_stdout(monkeypatch):
+    """PyInstaller --windowed on Windows sets sys.stdout / sys.stderr to
+    None. The module-level IS_TTY computation must handle that without
+    crashing on import — desktop app loads fail otherwise.
+
+    Regression: 0.2.1 shipped a .exe that crashed at startup with
+    AttributeError: 'NoneType' object has no attribute 'isatty'."""
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    sys.modules.pop("redpp", None)
+    try:
+        import redpp as _r  # noqa: F401  - import is the test
+        assert _r.IS_TTY is False
+        # The color helpers must still be safe to call.
+        assert _r.CYAN("x") == "x"
+    finally:
+        # Restore real stdout/stderr (monkeypatch does this) and force a
+        # fresh import for the rest of the suite.
+        monkeypatch.undo()
+        sys.modules.pop("redpp", None)
+        importlib.import_module("redpp")
 
 def _p(s):
     return parse_score_string(s)

@@ -139,6 +139,19 @@ jobs:
             --hidden-import=redpp `
             _launch.py
 
+      - name: Smoke-run the bundle (catches startup crashes)
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath dist\redpp.exe -PassThru
+          Start-Sleep -Seconds 3
+          if ($proc.HasExited) {
+            $code = $proc.ExitCode
+            Write-Error "redpp.exe exited within 3s, exit code: $code (a healthy Qt app should still be running). Likely an import-time or init crash."
+            exit 1
+          }
+          Stop-Process -Id $proc.Id -Force
+          Write-Host "OK — redpp.exe was still running after 3s"
+
       - name: Rename binary
         run: Move-Item dist/redpp.exe RedPP-windows-x86_64.exe
 

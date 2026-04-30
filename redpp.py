@@ -22,7 +22,19 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 24050
 POLL_INTERVAL = 0.5
 
-IS_TTY = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
+def _is_tty() -> bool:
+    """True only when stdout is a real TTY. Guards against PyInstaller's
+    --windowed mode on Windows where sys.stdout is None."""
+    out = sys.stdout
+    if out is None:
+        return False
+    isatty = getattr(out, "isatty", None)
+    try:
+        return bool(isatty()) if callable(isatty) else False
+    except (ValueError, OSError):
+        return False
+
+IS_TTY = _is_tty() and os.environ.get("NO_COLOR") is None
 def _c(code: str, s: str) -> str:
     return f"\x1b[{code}m{s}\x1b[0m" if IS_TTY else s
 CYAN  = lambda s: _c("36", s)
